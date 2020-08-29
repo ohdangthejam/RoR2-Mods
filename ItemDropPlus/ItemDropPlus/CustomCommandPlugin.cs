@@ -25,6 +25,9 @@ namespace OhDangTheMods
     {
         private const string ModGuid = "com.OhDangTheJam.OhDangTheMods";
 
+        private int levelsSpent = 0;
+        private int levelsTotal = 0;
+
         public static ConfigWrapper<int> choiceScaler { get; set; }
         public void initConfig()
         {
@@ -38,22 +41,26 @@ namespace OhDangTheMods
 
         public void Awake()
         {
+
             RoR2.Chat.AddMessage("Artifact of Satisfaction activated: Level ups reward item drops.");
             this.initConfig();
             On.RoR2.GlobalEventManager.OnTeamLevelUp += delegate (On.RoR2.GlobalEventManager.orig_OnTeamLevelUp orig, TeamIndex self)
             {
-                orig.Invoke(self);
-                int count = RoR2.PlayerCharacterMasterController.instances.Count;
-                float time = RoR2.Run.instance.time;
-                for (int i = 0; i < count; i++)
+                if (levelsTotal > 0 && levelsSpent < levelsTotal)
                 {
-                    RoR2.CharacterMaster master = RoR2.PlayerCharacterMasterController.instances[i].master;
-                    bool alive = master.isActiveAndEnabled;
-                    if (alive)
+                    orig.Invoke(self);
+                    int count = RoR2.PlayerCharacterMasterController.instances.Count;
+                    for (int i = 0; i < count; i++)
                     {
-                        ShowItemPicker(GetAvailablePickups(), master);
+                        RoR2.CharacterMaster master = RoR2.PlayerCharacterMasterController.instances[i].master;
+                        bool alive = master.isActiveAndEnabled;
+                        if (alive)
+                        {
+                            ShowItemPicker(GetAvailablePickups(), master);
+                        }
                     }
                 }
+                levelsTotal += 1;
             };
         }
 
@@ -62,6 +69,7 @@ namespace OhDangTheMods
             List<RoR2.PickupIndex> availableTier1DropList = RoR2.Run.instance.availableTier1DropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier1DropList.Count);
             master.inventory.GiveItem(availableTier1DropList[index].itemIndex);
+            levelsSpent += 1;
         }
 
         public void giveTier2Item(float offSet, RoR2.CharacterMaster master)
@@ -69,6 +77,7 @@ namespace OhDangTheMods
             List<RoR2.PickupIndex> availableTier2DropList = RoR2.Run.instance.availableTier2DropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier2DropList.Count);
             master.inventory.GiveItem(availableTier2DropList[index].itemIndex);
+            levelsSpent += 1;
         }
 
         public void giveTier3Item(float offSet, RoR2.CharacterMaster master)
@@ -76,6 +85,7 @@ namespace OhDangTheMods
             List<RoR2.PickupIndex> availableTier3DropList = RoR2.Run.instance.availableTier3DropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier3DropList.Count);
             master.inventory.GiveItem(availableTier3DropList[index].itemIndex);
+            levelsSpent += 1;
         }
 
         public void giveLunarItem(float offSet, RoR2.CharacterMaster master)
@@ -83,6 +93,7 @@ namespace OhDangTheMods
             List<RoR2.PickupIndex> availableLunarDropList = RoR2.Run.instance.availableLunarDropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableLunarDropList.Count);
             master.inventory.GiveItem(availableLunarDropList[index].itemIndex);
+            levelsSpent += 1;
         }
 
         public void giveEquipment(float offSet, RoR2.CharacterMaster master)
@@ -90,6 +101,7 @@ namespace OhDangTheMods
             List<RoR2.PickupIndex> availableEquipmentDropList = RoR2.Run.instance.availableEquipmentDropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableEquipmentDropList.Count);
             master.inventory.GiveItem(availableEquipmentDropList[index].itemIndex);
+            levelsSpent += 1;
         }
 
         private List<PickupIndex> GetAvailablePickups()
@@ -124,11 +136,7 @@ namespace OhDangTheMods
         {
             var itemInventoryDisplay = GameObject.Find("ItemInventoryDisplay");
 
-            float uiWidth = 300f;
-            if (availablePickups.Count > 8 * 5) // at least 5 rows of 8 items
-                uiWidth = 500f;
-            if (availablePickups.Count > 10 * 5) // at least 5 rows of 10 items
-                uiWidth = 600f;
+            float uiWidth = 220f;
 
             Logger.Log(LogLevel.Info, "Run started");
             var g = new GameObject();
@@ -141,12 +149,16 @@ namespace OhDangTheMods
             g.AddComponent<GraphicRaycaster>();
             g.AddComponent<MPEventSystemProvider>().fallBackToMainEventSystem = true;
             g.AddComponent<MPEventSystemLocator>();
-            g.AddComponent<CursorOpener>();
+            //g.AddComponent<CursorOpener>();
 
             var ctr = new GameObject();
             ctr.name = "Container";
             ctr.transform.SetParent(g.transform, false);
-            ctr.AddComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, uiWidth);
+            ctr.AddComponent<RectTransform>();
+            ctr.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 0f);
+            ctr.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
+            ctr.GetComponent<RectTransform>().pivot = new Vector2(0.5f, 0f);
+            ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, uiWidth);
 
             var bg2 = new GameObject();
             bg2.name = "Background";
@@ -172,25 +184,25 @@ namespace OhDangTheMods
             header.transform.SetParent(ctr.transform, false);
             header.transform.localPosition = new Vector2(0, 0);
             header.AddComponent<HGTextMeshProUGUI>().fontSize = 15;
-            header.GetComponent<HGTextMeshProUGUI>().text = "LEVEL UP\n Choose 1 upgrade.";
+            header.GetComponent<HGTextMeshProUGUI>().text = "LEVEL UP";
             header.GetComponent<HGTextMeshProUGUI>().color = Color.white;
             header.GetComponent<HGTextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             header.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 1f);
             header.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
             header.GetComponent<RectTransform>().pivot = new Vector2(0.5f, 1f);
-            header.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 80);
+            header.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 25);
 
             var itemCtr = new GameObject();
             itemCtr.name = "Item Container";
             itemCtr.transform.SetParent(ctr.transform, false);
-            itemCtr.transform.localPosition = new Vector2(0, -100f);
+            itemCtr.transform.localPosition = new Vector2(0, -30f);
             itemCtr.AddComponent<GridLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
-            itemCtr.GetComponent<GridLayoutGroup>().cellSize = new Vector2(75f, 75f);
-            itemCtr.GetComponent<GridLayoutGroup>().spacing = new Vector2(8f, 8f);
+            itemCtr.GetComponent<GridLayoutGroup>().cellSize = new Vector2(50f, 50f);
+            itemCtr.GetComponent<GridLayoutGroup>().spacing = new Vector2(4f, 4f);
             itemCtr.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 1f);
             itemCtr.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
             itemCtr.GetComponent<RectTransform>().pivot = new Vector2(0.5f, 1f);
-            itemCtr.GetComponent<RectTransform>().sizeDelta = new Vector2(-16f, 0);
+            itemCtr.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 0);
             itemCtr.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             var itemIconPrefab = itemInventoryDisplay.GetComponent<ItemInventoryDisplay>().itemIconPrefab;
@@ -225,7 +237,7 @@ namespace OhDangTheMods
                 });
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate(itemCtr.GetComponent<RectTransform>());
-            ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 100f + 20f);
+            ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 40f);
         }
 
     }
