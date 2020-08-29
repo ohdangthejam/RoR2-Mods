@@ -56,19 +56,19 @@ namespace ArtifactOfSatisfaction
                         switch (num)
                         {
                             case 0:
-                                this.spawnTier1Item(1f, master.GetBodyObject().transform);
+                                this.giveTier1Item(0f, master);
                                 break;
                             case 1:
-                                this.spawnEquipment(0f, master.GetBodyObject().transform);
+                                this.giveEquipment(0f, master);
                                 break;
                             case 2:
-                                this.spawnTier2Item(0f, master.GetBodyObject().transform);
+                                this.giveTier2Item(0f, master);
                                 break;
                             case 3:
-                                this.spawnTier3Item(0f, master.GetBodyObject().transform);
+                                this.giveTier3Item(0f, master);
                                 break;
                             default:
-                                this.spawnTier1Item(0f, master.GetBodyObject().transform);
+                                this.giveTier1Item(0f, master);
                                 break;
                         }
                     }
@@ -83,43 +83,39 @@ namespace ArtifactOfSatisfaction
             ArtifactOfSatisfaction.equipmentTimeLimit = base.Config.Wrap<int>("ArtifactOfSatisfaction time limits", "Equipment Time Limit", "Upto and including equipment will start appearing after this time limit. IN MINUTES. (tier one, equipment)", 5);
         }
 
-        public void spawnTier1Item(float offSet, Transform transform)
+        public void giveTier1Item(float offSet, RoR2.CharacterMaster master)
         {
             List<RoR2.PickupIndex> availableTier1DropList = RoR2.Run.instance.availableTier1DropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier1DropList.Count);
-            RoR2.PickupDropletController.CreatePickupDroplet(availableTier1DropList[index], transform.position, transform.forward * (20f + offSet));
+            master.inventory.GiveItem(availableTier1DropList[index].itemIndex);
         }
 
-        public void spawnTier2Item(float offSet, Transform transform)
+        public void giveTier2Item(float offSet, RoR2.CharacterMaster master)
         {
             List<RoR2.PickupIndex> availableTier2DropList = RoR2.Run.instance.availableTier2DropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier2DropList.Count);
-            RoR2.PickupDropletController.CreatePickupDroplet(availableTier2DropList[index], transform.position, transform.forward * (20f + offSet));
+            master.inventory.GiveItem(availableTier2DropList[index].itemIndex);
         }
 
-        public void spawnTier3Item(float offSet, Transform transform)
+        public void giveTier3Item(float offSet, RoR2.CharacterMaster master)
         {
             List<RoR2.PickupIndex> availableTier3DropList = RoR2.Run.instance.availableTier3DropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier3DropList.Count);
-            RoR2.PickupDropletController.CreatePickupDroplet(availableTier3DropList[index], transform.position, transform.forward * (20f + offSet));
+            master.inventory.GiveItem(availableTier3DropList[index].itemIndex);
         }
 
-        public void spawnLunarItem(float offSet, Transform transform)
+        public void giveLunarItem(float offSet, RoR2.CharacterMaster master)
         {
             List<RoR2.PickupIndex> availableLunarDropList = RoR2.Run.instance.availableLunarDropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableLunarDropList.Count);
-            RoR2.PickupDropletController.CreatePickupDroplet(availableLunarDropList[index], transform.position, transform.forward * (20f + offSet));
+            master.inventory.GiveItem(availableLunarDropList[index].itemIndex);
         }
 
-        public void spawnEquipment(float offSet, Transform transform)
+        public void giveEquipment(float offSet, RoR2.CharacterMaster master)
         {
             List<RoR2.PickupIndex> availableEquipmentDropList = RoR2.Run.instance.availableEquipmentDropList;
             int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableEquipmentDropList.Count);
-            RoR2.PickupDropletController.CreatePickupDroplet(availableEquipmentDropList[index], transform.position, transform.forward * (20f + offSet));
-        }
-
-        public void Update()
-        {
+            master.inventory.GiveItem(availableEquipmentDropList[index].itemIndex);
         }
     }
 }
