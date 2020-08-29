@@ -43,23 +43,14 @@ namespace OhDangTheMods
 
         public void Awake()
         {
-            /* NOT WORKING - AWAKE IS NOT CALLED ON SCENE CHANGE
-            if (levelsSpent >= 0 && levelsSpent < levelsTotal)
-            {
-                for (int i = levelsSpent; i == levelsTotal; i++)
-                {
-                    ShowItemPicker(GetAvailablePickups(), RoR2.PlayerCharacterMasterController.instances[0].master);
-                }
-            }
-            */
 
             On.RoR2.GlobalEventManager.OnTeamLevelUp += delegate (On.RoR2.GlobalEventManager.orig_OnTeamLevelUp orig, TeamIndex self)
             {
-                levelsTotal += 1;
-                RoR2.Chat.AddMessage("Level up: " + levelsTotal);
+                orig.Invoke(self);
+                levelsTotal = (int)TeamManager.instance.GetTeamLevel(self) - 1;
                 if (levelsTotal > 0 && levelsSpent < levelsTotal) // 
                 {
-                    orig.Invoke(self);
+                    RoR2.Chat.AddMessage("Level up: " + levelsTotal);
                     int count = RoR2.PlayerCharacterMasterController.instances.Count;
                     for (int i = 0; i < count; i++)
                     {
@@ -154,18 +145,18 @@ namespace OhDangTheMods
             header.transform.SetParent(ctr.transform, false);
             header.transform.localPosition = new Vector2(0, 0);
             header.AddComponent<HGTextMeshProUGUI>().fontSize = 15;
-            header.GetComponent<HGTextMeshProUGUI>().text = "LEVEL UP\n" + "Level " + (levelsSpent + 1);
+            header.GetComponent<HGTextMeshProUGUI>().text = "LEVEL UP\n" + "Choose a perk for level " + (levelsSpent + 2) + ".";
             header.GetComponent<HGTextMeshProUGUI>().color = Color.white;
             header.GetComponent<HGTextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             header.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 1f);
             header.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
             header.GetComponent<RectTransform>().pivot = new Vector2(0.5f, 1f);
-            header.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 35);
+            header.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 40);
 
             var itemCtr = new GameObject();
             itemCtr.name = "Item Container";
             itemCtr.transform.SetParent(ctr.transform, false);
-            itemCtr.transform.localPosition = new Vector2(0, -40f);
+            itemCtr.transform.localPosition = new Vector2(0, -45f);
             itemCtr.AddComponent<GridLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
             itemCtr.GetComponent<GridLayoutGroup>().cellSize = new Vector2(50f, 50f);
             itemCtr.GetComponent<GridLayoutGroup>().spacing = new Vector2(4f, 4f);
@@ -215,7 +206,7 @@ namespace OhDangTheMods
                 });
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate(itemCtr.GetComponent<RectTransform>());
-            ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 40f);
+            ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 45f);
         }
 
     }
