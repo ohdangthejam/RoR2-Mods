@@ -37,71 +37,41 @@ namespace OhDangTheMods
         public void Start()
         {
             var miniRpc = MiniRpc.CreateInstance(ModGuid);
+            RoR2.Chat.AddMessage("Level ups reward item drops.");
+            this.initConfig();
         }
 
         public void Awake()
         {
+            /* NOT WORKING - AWAKE IS NOT CALLED ON SCENE CHANGE
+            if (levelsSpent >= 0 && levelsSpent < levelsTotal)
+            {
+                for (int i = levelsSpent; i == levelsTotal; i++)
+                {
+                    ShowItemPicker(GetAvailablePickups(), RoR2.PlayerCharacterMasterController.instances[0].master);
+                }
+            }
+            */
 
-            RoR2.Chat.AddMessage("Artifact of Satisfaction activated: Level ups reward item drops.");
-            this.initConfig();
             On.RoR2.GlobalEventManager.OnTeamLevelUp += delegate (On.RoR2.GlobalEventManager.orig_OnTeamLevelUp orig, TeamIndex self)
             {
-                if (levelsTotal > 0 && levelsSpent < levelsTotal)
+                levelsTotal += 1;
+                RoR2.Chat.AddMessage("Level up: " + levelsTotal);
+                if (levelsTotal > 0 && levelsSpent < levelsTotal) // 
                 {
                     orig.Invoke(self);
                     int count = RoR2.PlayerCharacterMasterController.instances.Count;
                     for (int i = 0; i < count; i++)
                     {
                         RoR2.CharacterMaster master = RoR2.PlayerCharacterMasterController.instances[i].master;
-                        bool alive = master.isActiveAndEnabled;
+                        bool alive = master.hasBody;
                         if (alive)
                         {
                             ShowItemPicker(GetAvailablePickups(), master);
                         }
                     }
                 }
-                levelsTotal += 1;
             };
-        }
-
-        public void giveTier1Item(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableTier1DropList = RoR2.Run.instance.availableTier1DropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier1DropList.Count);
-            master.inventory.GiveItem(availableTier1DropList[index].itemIndex);
-            levelsSpent += 1;
-        }
-
-        public void giveTier2Item(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableTier2DropList = RoR2.Run.instance.availableTier2DropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier2DropList.Count);
-            master.inventory.GiveItem(availableTier2DropList[index].itemIndex);
-            levelsSpent += 1;
-        }
-
-        public void giveTier3Item(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableTier3DropList = RoR2.Run.instance.availableTier3DropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier3DropList.Count);
-            master.inventory.GiveItem(availableTier3DropList[index].itemIndex);
-            levelsSpent += 1;
-        }
-
-        public void giveLunarItem(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableLunarDropList = RoR2.Run.instance.availableLunarDropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableLunarDropList.Count);
-            master.inventory.GiveItem(availableLunarDropList[index].itemIndex);
-            levelsSpent += 1;
-        }
-
-        public void giveEquipment(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableEquipmentDropList = RoR2.Run.instance.availableEquipmentDropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableEquipmentDropList.Count);
-            master.inventory.GiveItem(availableEquipmentDropList[index].itemIndex);
-            levelsSpent += 1;
         }
 
         private List<PickupIndex> GetAvailablePickups()
@@ -184,18 +154,18 @@ namespace OhDangTheMods
             header.transform.SetParent(ctr.transform, false);
             header.transform.localPosition = new Vector2(0, 0);
             header.AddComponent<HGTextMeshProUGUI>().fontSize = 15;
-            header.GetComponent<HGTextMeshProUGUI>().text = "LEVEL UP";
+            header.GetComponent<HGTextMeshProUGUI>().text = "LEVEL UP\n" + "Level " + (levelsSpent + 1);
             header.GetComponent<HGTextMeshProUGUI>().color = Color.white;
             header.GetComponent<HGTextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             header.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 1f);
             header.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
             header.GetComponent<RectTransform>().pivot = new Vector2(0.5f, 1f);
-            header.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 25);
+            header.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 35);
 
             var itemCtr = new GameObject();
             itemCtr.name = "Item Container";
             itemCtr.transform.SetParent(ctr.transform, false);
-            itemCtr.transform.localPosition = new Vector2(0, -30f);
+            itemCtr.transform.localPosition = new Vector2(0, -40f);
             itemCtr.AddComponent<GridLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
             itemCtr.GetComponent<GridLayoutGroup>().cellSize = new Vector2(50f, 50f);
             itemCtr.GetComponent<GridLayoutGroup>().spacing = new Vector2(4f, 4f);
@@ -216,6 +186,10 @@ namespace OhDangTheMods
                     Logger.LogInfo("Item picked: " + index);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveItem(index.itemIndex);
+                    levelsSpent += 1;
+                    if (levelsSpent >= 0 && levelsSpent < levelsTotal)
+                        ShowItemPicker(GetAvailablePickups(), master);
+                    RoR2.Chat.AddMessage("Perks chosen: " + levelsSpent + " / " + levelsTotal);
                 });
             }
             foreach (PickupIndex index in availablePickups)
@@ -234,6 +208,10 @@ namespace OhDangTheMods
                     Logger.LogInfo("Equipment picked: " + index);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveEquipmentString(def.name);
+                    levelsSpent += 1;
+                    if (levelsSpent > 0 && levelsSpent < levelsTotal)
+                        ShowItemPicker(GetAvailablePickups(), master);
+                    RoR2.Chat.AddMessage("Perks chosen: " + levelsSpent + " / " + levelsTotal);
                 });
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate(itemCtr.GetComponent<RectTransform>());
