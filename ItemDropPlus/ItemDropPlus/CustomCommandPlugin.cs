@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using BepInEx.Configuration;
 using LeTai.Asset.TranslucentImage;
 using MiniRpcLib;
 using MiniRpcLib.Action;
@@ -22,53 +23,94 @@ namespace OhDangTheMods
     [BepInDependency(MiniRpcPlugin.Dependency)]
     public class CustomCommandPlugin : BaseUnityPlugin
     {
-
         private const string ModGuid = "com.OhDangTheJam.OhDangTheMods";
 
-        private IRpcAction<Action<NetworkWriter>> NetShowItemPickerAction;
-        private IRpcAction<Action<NetworkWriter>> NetItemPickedAction;
+        public static ConfigWrapper<int> choiceScaler { get; set; }
+        public void initConfig()
+        {
+            CustomCommandPlugin.choiceScaler = base.Config.Wrap<int>("CustomCommandPlugin choice scaler", "Choice Scaler", "Determine how many items to choose from upon level up. Default: 3.", 3);
+        }
 
         public void Start()
         {
             var miniRpc = MiniRpc.CreateInstance(ModGuid);
-            NetShowItemPickerAction = miniRpc.RegisterAction(Target.Client, NetShowItemPicker);
-            NetItemPickedAction = miniRpc.RegisterAction(Target.Server, NetItemPicked);
         }
 
-        private List<PickupIndex> GetAvailablePickups(PickupIndex generatedPickup)
+        public void Awake()
+        {
+            RoR2.Chat.AddMessage("Artifact of Satisfaction activated: Level ups reward item drops.");
+            this.initConfig();
+            On.RoR2.GlobalEventManager.OnTeamLevelUp += delegate (On.RoR2.GlobalEventManager.orig_OnTeamLevelUp orig, TeamIndex self)
+            {
+                orig.Invoke(self);
+                int count = RoR2.PlayerCharacterMasterController.instances.Count;
+                float time = RoR2.Run.instance.time;
+                for (int i = 0; i < count; i++)
+                {
+                    RoR2.CharacterMaster master = RoR2.PlayerCharacterMasterController.instances[i].master;
+                    bool alive = master.isActiveAndEnabled;
+                    if (alive)
+                    {
+                        ShowItemPicker(GetAvailablePickups(), master);
+                    }
+                }
+            };
+        }
+
+        public void giveTier1Item(float offSet, RoR2.CharacterMaster master)
+        {
+            List<RoR2.PickupIndex> availableTier1DropList = RoR2.Run.instance.availableTier1DropList;
+            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier1DropList.Count);
+            master.inventory.GiveItem(availableTier1DropList[index].itemIndex);
+        }
+
+        public void giveTier2Item(float offSet, RoR2.CharacterMaster master)
+        {
+            List<RoR2.PickupIndex> availableTier2DropList = RoR2.Run.instance.availableTier2DropList;
+            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier2DropList.Count);
+            master.inventory.GiveItem(availableTier2DropList[index].itemIndex);
+        }
+
+        public void giveTier3Item(float offSet, RoR2.CharacterMaster master)
+        {
+            List<RoR2.PickupIndex> availableTier3DropList = RoR2.Run.instance.availableTier3DropList;
+            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier3DropList.Count);
+            master.inventory.GiveItem(availableTier3DropList[index].itemIndex);
+        }
+
+        public void giveLunarItem(float offSet, RoR2.CharacterMaster master)
+        {
+            List<RoR2.PickupIndex> availableLunarDropList = RoR2.Run.instance.availableLunarDropList;
+            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableLunarDropList.Count);
+            master.inventory.GiveItem(availableLunarDropList[index].itemIndex);
+        }
+
+        public void giveEquipment(float offSet, RoR2.CharacterMaster master)
+        {
+            List<RoR2.PickupIndex> availableEquipmentDropList = RoR2.Run.instance.availableEquipmentDropList;
+            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableEquipmentDropList.Count);
+            master.inventory.GiveItem(availableEquipmentDropList[index].itemIndex);
+        }
+
+        private List<PickupIndex> GetAvailablePickups()
         {
             var availablePickups = new List<PickupIndex>();
             var selectedPickups = new List<PickupIndex>();
-            int selectionLimit = 3;
-            if (generatedPickup.itemIndex != ItemIndex.None)
-            {
-                var tier = ItemCatalog.GetItemDef(generatedPickup.itemIndex).tier;
-                if (tier == ItemTier.Tier1 || tier == ItemTier.Tier2 || tier == ItemTier.Tier3)
-                    selectedPickups.AddRange(Run.instance.availableTier1DropList);
-                if (tier == ItemTier.Tier2 || tier == ItemTier.Tier3)
-                    selectedPickups.AddRange(Run.instance.availableTier2DropList);
-                if (tier == ItemTier.Tier3)
-                    selectedPickups.AddRange(Run.instance.availableTier3DropList);
-                if (tier == ItemTier.Lunar)
-                    selectedPickups.AddRange(Run.instance.availableLunarDropList);
-                //if (tier != ItemTier.Tier1 && tier != ItemTier.Tier2 && tier != ItemTier.Tier3 && tier != ItemTier.Lunar)
-                //    return;
-            }
-            else if (generatedPickup.equipmentIndex != EquipmentIndex.None)
-            {
-                if (EquipmentCatalog.GetEquipmentDef(generatedPickup.equipmentIndex).isLunar)
-                {
-                    selectedPickups.AddRange(Run.instance.availableLunarDropList);
-                }
-                else
-                {
-                    selectedPickups.AddRange(Run.instance.availableEquipmentDropList);
-                }
-            }
+            var tier = Mathf.RoundToInt(UnityEngine.Random.Range(0, 100));
+            if (tier <= 50)
+                selectedPickups.AddRange(Run.instance.availableTier1DropList);
+            else if (tier <= 85)
+                selectedPickups.AddRange(Run.instance.availableTier2DropList);
+            else if (tier <= 90)
+                selectedPickups.AddRange(Run.instance.availableTier3DropList);
+            else if (tier <= 95)
+                selectedPickups.AddRange(Run.instance.availableLunarDropList);
+            else if (tier <= 100)
+                selectedPickups.AddRange(Run.instance.availableEquipmentDropList);
 
             if (selectedPickups.Count > 0)
             {
-                for (var i = 0; i < selectionLimit; i++)
+                for (var i = 0; i < choiceScaler.Value; i++)
                 {
                     int currentPickup = Mathf.RoundToInt((UnityEngine.Random.Range(0, selectedPickups.Count - 1)));
                     availablePickups.Add(selectedPickups[currentPickup]);
@@ -77,21 +119,8 @@ namespace OhDangTheMods
 
             return availablePickups;
         }
-        
 
-        private bool HandlePurchaseInteraction(Interactor interactor, NetworkBehaviour ctr, PickupIndex generatedPickup)
-        {
-            var user = interactor.GetComponent<CharacterBody>()?.master?.GetComponent<PlayerCharacterMasterController>()?.networkUser;
-            if (user == null)
-                return false;
-            List<PickupIndex> pickups = GetAvailablePickups(generatedPickup);
-            if (pickups.Count == 0)
-                return false;
-            CallNetShowItemPicker(user, ctr.netId, pickups);
-            return true;
-        }
-
-        private void ShowItemPicker(List<PickupIndex> availablePickups, ItemCallback cb)
+        public void ShowItemPicker(List<PickupIndex> availablePickups, RoR2.CharacterMaster master)
         {
             var itemInventoryDisplay = GameObject.Find("ItemInventoryDisplay");
 
@@ -174,7 +203,7 @@ namespace OhDangTheMods
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() => {
                     Logger.LogInfo("Item picked: " + index);
                     UnityEngine.Object.Destroy(g);
-                    cb(index);
+                    master.inventory.GiveItem(index.itemIndex);
                 });
             }
             foreach (PickupIndex index in availablePickups)
@@ -192,71 +221,11 @@ namespace OhDangTheMods
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() => {
                     Logger.LogInfo("Equipment picked: " + index);
                     UnityEngine.Object.Destroy(g);
-                    cb(index);
+                    master.inventory.GiveEquipmentString(def.name);
                 });
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate(itemCtr.GetComponent<RectTransform>());
             ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 100f + 20f);
-        }
-
-        public delegate void ItemCallback(PickupIndex index);
-
-
-        // I used the annotations to just make the code more readable, they are unused if compiling via VS (and if compiling via unity they add additional asserts)
-
-        [Client]
-        private void NetShowItemPicker(NetworkUser user, NetworkReader reader)
-        {
-            var chestId = reader.ReadNetworkId();
-            int count = reader.ReadInt32();
-            var pickups = new List<PickupIndex>(count);
-            for (int i = 0; i < count; i++)
-                pickups.Add(PickupIndex.ReadFromNetworkReader(reader));
-
-            ShowItemPicker(pickups, x => CallNetItemPicked(chestId, x));
-        }
-
-        [Server]
-        private void CallNetShowItemPicker(NetworkUser user, NetworkInstanceId chestId, List<PickupIndex> pickups)
-        {
-            NetShowItemPickerAction.Invoke(w => {
-                w.Write(chestId);
-                w.Write(pickups.Count);
-                foreach (var i in pickups)
-                    PickupIndex.WriteToNetworkWriter(w, i);
-            }, user);
-        }
-
-        [Server]
-        private void NetItemPicked(NetworkUser user, NetworkReader reader)
-        {
-            var chestNetId = reader.ReadNetworkIdentity();
-            var selectedPickup = PickupIndex.ReadFromNetworkReader(reader);
-
-            var chest = chestNetId.GetComponent<ChestBehavior>();
-            if (chest != null)
-            {
-                //chestBehaviorDropPickupMember.SetValue(chest, selectedPickup);
-                //if (FindPersistentListener(chest.GetComponent<PurchaseInteraction>().onPurchase, chest, "ItemDrop") != -1) // Rusty Lockbox
-                //    chest.ItemDrop();
-                chest.Open();
-            }
-            var terminal = chestNetId.GetComponent<ShopTerminalBehavior>();
-            if (terminal != null)
-            {
-                //shopTerminalBehaviorPickupIndexMember.SetValue(terminal, selectedPickup);
-                //terminal.DropPickup();
-                //terminal.SetNoPickup();
-            }
-        }
-
-        [Client]
-        private void CallNetItemPicked(NetworkInstanceId chestId, PickupIndex selectedPickup)
-        {
-            NetItemPickedAction.Invoke(w => {
-                w.Write(chestId);
-                PickupIndex.WriteToNetworkWriter(w, selectedPickup);
-            });
         }
 
     }
