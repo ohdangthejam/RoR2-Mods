@@ -25,10 +25,6 @@ namespace OhDangTheMods
 
         private const string ModGuid = "com.OhDangTheJam.OhDangTheMods";
 
-        private static FieldInfo chestBehaviorDropPickupMember = typeof(ChestBehavior).GetField("dropPickup", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static FieldInfo shopTerminalBehaviorPickupIndexMember = typeof(ShopTerminalBehavior).GetField("pickupIndex", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static FieldInfo multiShopControllerGameObjectsMember = typeof(MultiShopController).GetField("terminalGameObjects", BindingFlags.NonPublic | BindingFlags.Instance);
-
         private IRpcAction<Action<NetworkWriter>> NetShowItemPickerAction;
         private IRpcAction<Action<NetworkWriter>> NetItemPickedAction;
 
@@ -37,57 +33,6 @@ namespace OhDangTheMods
             var miniRpc = MiniRpc.CreateInstance(ModGuid);
             NetShowItemPickerAction = miniRpc.RegisterAction(Target.Client, NetShowItemPicker);
             NetItemPickedAction = miniRpc.RegisterAction(Target.Server, NetItemPicked);
-
-            On.RoR2.ChestBehavior.Start += (orig, self) => {
-                orig(self);
-                // By default the listener list contains: [0]PurchaseInteraction.SetAvailable(false) and [1]ChestBehavior.Open()
-                var purchaseInteraction = self.GetComponent<PurchaseInteraction>();
-                DisablePersistentListener(purchaseInteraction.onPurchase, self, "ItemDrop"); // Rusty Lockbox
-                DisablePersistentListener(purchaseInteraction.onPurchase, self, "Open");
-                purchaseInteraction.onPurchase.AddListener((v) => {
-                    var generatedPickup = (PickupIndex)chestBehaviorDropPickupMember.GetValue(self);
-                    if (!HandlePurchaseInteraction(v, self, generatedPickup))
-                        self.Open();
-                });
-            };
-            On.RoR2.ShopTerminalBehavior.Start += (orig, self) => {
-                orig(self);
-                var generatedPickup = self.NetworkpickupIndex;
-                if (!self.Networkhidden)
-                    return;
-                // By default the listener list contains: [0]PurchaseInteraction.SetAvailable(false), [1]ShopTerminalBehavior.DropPickup(), [2]ShopTerminalBehavior.SetNoPickup()
-                var purchaseInteraction = self.GetComponent<PurchaseInteraction>();
-                DisablePersistentListener(purchaseInteraction.onPurchase, self, "DropPickup");
-                DisablePersistentListener(purchaseInteraction.onPurchase, self, "SetNoPickup");
-                purchaseInteraction.onPurchase.AddListener((v) => {
-                    if (!HandlePurchaseInteraction(v, self, generatedPickup))
-                    {
-                        self.DropPickup();
-                        self.SetNoPickup();
-                    }
-                });
-            };
-            On.RoR2.MultiShopController.CreateTerminals += (orig, self) => {
-                orig(self);
-                HandlePostCreateMultiShopTerminals(self);
-            };
-        }
-
-        private static int FindPersistentListener(UnityEventBase ev, UnityEngine.Object target, string methodName)
-        {
-            for (int i = 0; i < ev.GetPersistentEventCount(); i++)
-            {
-                if (ev.GetPersistentTarget(i) == target && ev.GetPersistentMethodName(i) == methodName)
-                    return i;
-            }
-            return -1;
-        }
-
-        private static void DisablePersistentListener(UnityEventBase ev, UnityEngine.Object target, string methodName)
-        {
-            int index = FindPersistentListener(ev, target, methodName);
-            if (index != -1)
-                ev.SetPersistentListenerState(index, UnityEventCallState.Off);
         }
 
         private List<PickupIndex> GetAvailablePickups(PickupIndex generatedPickup)
@@ -132,6 +77,7 @@ namespace OhDangTheMods
 
             return availablePickups;
         }
+        
 
         private bool HandlePurchaseInteraction(Interactor interactor, NetworkBehaviour ctr, PickupIndex generatedPickup)
         {
@@ -143,39 +89,6 @@ namespace OhDangTheMods
                 return false;
             CallNetShowItemPicker(user, ctr.netId, pickups);
             return true;
-        }
-
-        private void HandlePostCreateMultiShopTerminals(MultiShopController multiShop)
-        {
-            // Show items from all terminals except for one
-            GameObject[] objects = (GameObject[])multiShopControllerGameObjectsMember.GetValue(multiShop);
-            GameObject hidden = null;
-            foreach (GameObject o in objects)
-            {
-                if (o.GetComponent<ShopTerminalBehavior>().Networkhidden)
-                    hidden = o;
-            }
-            if (hidden == null)
-                hidden = Run.instance.treasureRng.NextElementUniform<GameObject>(objects);
-            foreach (GameObject o in objects)
-                o.GetComponent<ShopTerminalBehavior>().Networkhidden = (o == hidden);
-
-            // Fix anim - Don't close the terminal we are picking the item from.
-            foreach (GameObject gameObject in objects)
-            {
-                // Remove the .DisableAllTerminals listener and reimplement it
-                gameObject.GetComponent<PurchaseInteraction>().onPurchase.RemoveAllListeners();
-                gameObject.GetComponent<PurchaseInteraction>().onPurchase.AddListener((v) => {
-                    foreach (GameObject other in objects)
-                    {
-                        if (other == gameObject) // CHANGE: exclude the terminal we are opening
-                            continue;
-                        other.GetComponent<PurchaseInteraction>().Networkavailable = false;
-                        other.GetComponent<ShopTerminalBehavior>().SetNoPickup();
-                    }
-                    multiShop.Networkavailable = false;
-                });
-            }
         }
 
         private void ShowItemPicker(List<PickupIndex> availablePickups, ItemCallback cb)
@@ -323,17 +236,17 @@ namespace OhDangTheMods
             var chest = chestNetId.GetComponent<ChestBehavior>();
             if (chest != null)
             {
-                chestBehaviorDropPickupMember.SetValue(chest, selectedPickup);
-                if (FindPersistentListener(chest.GetComponent<PurchaseInteraction>().onPurchase, chest, "ItemDrop") != -1) // Rusty Lockbox
-                    chest.ItemDrop();
+                //chestBehaviorDropPickupMember.SetValue(chest, selectedPickup);
+                //if (FindPersistentListener(chest.GetComponent<PurchaseInteraction>().onPurchase, chest, "ItemDrop") != -1) // Rusty Lockbox
+                //    chest.ItemDrop();
                 chest.Open();
             }
             var terminal = chestNetId.GetComponent<ShopTerminalBehavior>();
             if (terminal != null)
             {
-                shopTerminalBehaviorPickupIndexMember.SetValue(terminal, selectedPickup);
-                terminal.DropPickup();
-                terminal.SetNoPickup();
+                //shopTerminalBehaviorPickupIndexMember.SetValue(terminal, selectedPickup);
+                //terminal.DropPickup();
+                //terminal.SetNoPickup();
             }
         }
 

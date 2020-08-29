@@ -1,42 +1,94 @@
-﻿using BepInEx;
+﻿/*
+using BepInEx;
 using BepInEx.Logging;
-using BepInEx.Configuration;
 using LeTai.Asset.TranslucentImage;
 using MiniRpcLib;
 using MiniRpcLib.Action;
 using RoR2;
 using RoR2.UI;
 using System;
-using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using UnityEngine.Events;
 
-namespace ArtifactOfSatisfaction
+namespace OhDangTheMods
 {
+
     [BepInPlugin(ModGuid, "CustomCommandPlugin", "1.0.0")]
     [BepInDependency(MiniRpcPlugin.Dependency)]
-    public class ArtifactOfSatisfaction : BaseUnityPlugin
+    public class CustomCommandPlugin : BaseUnityPlugin
     {
 
         private const string ModGuid = "com.OhDangTheJam.OhDangTheMods";
 
+        private static FieldInfo chestBehaviorDropPickupMember = typeof(ChestBehavior).GetField("dropPickup", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static FieldInfo shopTerminalBehaviorPickupIndexMember = typeof(ShopTerminalBehavior).GetField("pickupIndex", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static FieldInfo multiShopControllerGameObjectsMember = typeof(MultiShopController).GetField("terminalGameObjects", BindingFlags.NonPublic | BindingFlags.Instance);
+
         private IRpcAction<Action<NetworkWriter>> NetShowItemPickerAction;
         private IRpcAction<Action<NetworkWriter>> NetItemPickedAction;
-
-        public static ConfigWrapper<int> equipmentTimeLimit { get; set; }
-        public static ConfigWrapper<int> tierTwoTimeLimit { get; set; }
-        public static ConfigWrapper<int> tierThreeTimeLimit { get; set; }
 
         public void Start()
         {
             var miniRpc = MiniRpc.CreateInstance(ModGuid);
             NetShowItemPickerAction = miniRpc.RegisterAction(Target.Client, NetShowItemPicker);
             NetItemPickedAction = miniRpc.RegisterAction(Target.Server, NetItemPicked);
+
+            On.RoR2.ChestBehavior.Start += (orig, self) => {
+                orig(self);
+                // By default the listener list contains: [0]PurchaseInteraction.SetAvailable(false) and [1]ChestBehavior.Open()
+                var purchaseInteraction = self.GetComponent<PurchaseInteraction>();
+                DisablePersistentListener(purchaseInteraction.onPurchase, self, "ItemDrop"); // Rusty Lockbox
+                DisablePersistentListener(purchaseInteraction.onPurchase, self, "Open");
+                purchaseInteraction.onPurchase.AddListener((v) => {
+                    var generatedPickup = (PickupIndex)chestBehaviorDropPickupMember.GetValue(self);
+                    if (!HandlePurchaseInteraction(v, self, generatedPickup))
+                        self.Open();
+                });
+            };
+            On.RoR2.ShopTerminalBehavior.Start += (orig, self) => {
+                orig(self);
+                var generatedPickup = self.NetworkpickupIndex;
+                if (!self.Networkhidden)
+                    return;
+                // By default the listener list contains: [0]PurchaseInteraction.SetAvailable(false), [1]ShopTerminalBehavior.DropPickup(), [2]ShopTerminalBehavior.SetNoPickup()
+                var purchaseInteraction = self.GetComponent<PurchaseInteraction>();
+                DisablePersistentListener(purchaseInteraction.onPurchase, self, "DropPickup");
+                DisablePersistentListener(purchaseInteraction.onPurchase, self, "SetNoPickup");
+                purchaseInteraction.onPurchase.AddListener((v) => {
+                    if (!HandlePurchaseInteraction(v, self, generatedPickup))
+                    {
+                        self.DropPickup();
+                        self.SetNoPickup();
+                    }
+                });
+            };
+            On.RoR2.MultiShopController.CreateTerminals += (orig, self) => {
+                orig(self);
+                HandlePostCreateMultiShopTerminals(self);
+            };
+        }
+
+        private static int FindPersistentListener(UnityEventBase ev, UnityEngine.Object target, string methodName)
+        {
+            for (int i = 0; i < ev.GetPersistentEventCount(); i++)
+            {
+                if (ev.GetPersistentTarget(i) == target && ev.GetPersistentMethodName(i) == methodName)
+                    return i;
+            }
+            return -1;
+        }
+
+        private static void DisablePersistentListener(UnityEventBase ev, UnityEngine.Object target, string methodName)
+        {
+            int index = FindPersistentListener(ev, target, methodName);
+            if (index != -1)
+                ev.SetPersistentListenerState(index, UnityEventCallState.Off);
         }
 
         private List<PickupIndex> GetAvailablePickups(PickupIndex generatedPickup)
@@ -92,6 +144,39 @@ namespace ArtifactOfSatisfaction
                 return false;
             CallNetShowItemPicker(user, ctr.netId, pickups);
             return true;
+        }
+
+        private void HandlePostCreateMultiShopTerminals(MultiShopController multiShop)
+        {
+            // Show items from all terminals except for one
+            GameObject[] objects = (GameObject[])multiShopControllerGameObjectsMember.GetValue(multiShop);
+            GameObject hidden = null;
+            foreach (GameObject o in objects)
+            {
+                if (o.GetComponent<ShopTerminalBehavior>().Networkhidden)
+                    hidden = o;
+            }
+            if (hidden == null)
+                hidden = Run.instance.treasureRng.NextElementUniform<GameObject>(objects);
+            foreach (GameObject o in objects)
+                o.GetComponent<ShopTerminalBehavior>().Networkhidden = (o == hidden);
+
+            // Fix anim - Don't close the terminal we are picking the item from.
+            foreach (GameObject gameObject in objects)
+            {
+                // Remove the .DisableAllTerminals listener and reimplement it
+                gameObject.GetComponent<PurchaseInteraction>().onPurchase.RemoveAllListeners();
+                gameObject.GetComponent<PurchaseInteraction>().onPurchase.AddListener((v) => {
+                    foreach (GameObject other in objects)
+                    {
+                        if (other == gameObject) // CHANGE: exclude the terminal we are opening
+                            continue;
+                        other.GetComponent<PurchaseInteraction>().Networkavailable = false;
+                        other.GetComponent<ShopTerminalBehavior>().SetNoPickup();
+                    }
+                    multiShop.Networkavailable = false;
+                });
+            }
         }
 
         private void ShowItemPicker(List<PickupIndex> availablePickups, ItemCallback cb)
@@ -204,6 +289,7 @@ namespace ArtifactOfSatisfaction
 
         public delegate void ItemCallback(PickupIndex index);
 
+
         // I used the annotations to just make the code more readable, they are unused if compiling via VS (and if compiling via unity they add additional asserts)
 
         [Client]
@@ -238,17 +324,17 @@ namespace ArtifactOfSatisfaction
             var chest = chestNetId.GetComponent<ChestBehavior>();
             if (chest != null)
             {
-                //chestBehaviorDropPickupMember.SetValue(chest, selectedPickup);
-                //if (FindPersistentListener(chest.GetComponent<PurchaseInteraction>().onPurchase, chest, "ItemDrop") != -1) // Rusty Lockbox
-                //    chest.ItemDrop();
+                chestBehaviorDropPickupMember.SetValue(chest, selectedPickup);
+                if (FindPersistentListener(chest.GetComponent<PurchaseInteraction>().onPurchase, chest, "ItemDrop") != -1) // Rusty Lockbox
+                    chest.ItemDrop();
                 chest.Open();
             }
             var terminal = chestNetId.GetComponent<ShopTerminalBehavior>();
             if (terminal != null)
             {
-                //shopTerminalBehaviorPickupIndexMember.SetValue(terminal, selectedPickup);
-                //terminal.DropPickup();
-                //terminal.SetNoPickup();
+                shopTerminalBehaviorPickupIndexMember.SetValue(terminal, selectedPickup);
+                terminal.DropPickup();
+                terminal.SetNoPickup();
             }
         }
 
@@ -261,106 +347,6 @@ namespace ArtifactOfSatisfaction
             });
         }
 
-        public void Awake()
-        {
-            RoR2.Chat.AddMessage("Artifact of Satisfaction activated: Level ups reward item drops.");
-            this.initConfig();
-            On.RoR2.GlobalEventManager.OnTeamLevelUp += delegate (On.RoR2.GlobalEventManager.orig_OnTeamLevelUp orig, TeamIndex self)
-            {
-                orig.Invoke(self);
-                int count = RoR2.PlayerCharacterMasterController.instances.Count;
-                float time = RoR2.Run.instance.time;
-                for (int i = 0; i < count; i++)
-                {
-                    RoR2.CharacterMaster master = RoR2.PlayerCharacterMasterController.instances[i].master;
-                    bool alive = master.isActiveAndEnabled;
-                    if (alive)
-                    {
-                        int num = 0;
-                        bool flag = time >= (float)ArtifactOfSatisfaction.tierThreeTimeLimit.Value * 60f;
-                        if (flag)
-                        {
-                            num = UnityEngine.Random.Range(0, 4);
-                        }
-                        else
-                        {
-                            bool flag2 = time >= (float)ArtifactOfSatisfaction.tierTwoTimeLimit.Value * 60f;
-                            if (flag2)
-                            {
-                                num = UnityEngine.Random.Range(0, 3);
-                            }
-                            else
-                            {
-                                bool flag3 = time >= (float)ArtifactOfSatisfaction.equipmentTimeLimit.Value * 60f;
-                                if (flag3)
-                                {
-                                    num = UnityEngine.Random.Range(0, 2);
-                                }
-                            }
-                        }
-                        switch (num)
-                        {
-                            case 0:
-                                this.giveTier1Item(0f, master);
-                                break;
-                            case 1:
-                                this.giveEquipment(0f, master);
-                                break;
-                            case 2:
-                                this.giveTier2Item(0f, master);
-                                break;
-                            case 3:
-                                this.giveTier3Item(0f, master);
-                                break;
-                            default:
-                                this.giveTier1Item(0f, master);
-                                break;
-                        }
-                    }
-                }
-            };
-        }
-
-        public void initConfig()
-        {
-            ArtifactOfSatisfaction.tierThreeTimeLimit = base.Config.Wrap<int>("ArtifactOfSatisfaction time limits", "Tier Three Time Limit", "Upto and including Tier three items will start appearing after this time limit. IN MINUTES. (tier one, tier two, tier three, equipment)", 30);
-            ArtifactOfSatisfaction.tierTwoTimeLimit = base.Config.Wrap<int>("ArtifactOfSatisfaction time limits", "Tier Two Time Limit", "Upto and including Tier two items will start appearing after this time limit. IN MINUTES. (tier one, tier two, equipment)", 10);
-            ArtifactOfSatisfaction.equipmentTimeLimit = base.Config.Wrap<int>("ArtifactOfSatisfaction time limits", "Equipment Time Limit", "Upto and including equipment will start appearing after this time limit. IN MINUTES. (tier one, equipment)", 5);
-        }
-
-        public void giveTier1Item(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableTier1DropList = RoR2.Run.instance.availableTier1DropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier1DropList.Count);
-            master.inventory.GiveItem(availableTier1DropList[index].itemIndex);
-        }
-
-        public void giveTier2Item(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableTier2DropList = RoR2.Run.instance.availableTier2DropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier2DropList.Count);
-            master.inventory.GiveItem(availableTier2DropList[index].itemIndex);
-        }
-
-        public void giveTier3Item(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableTier3DropList = RoR2.Run.instance.availableTier3DropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableTier3DropList.Count);
-            master.inventory.GiveItem(availableTier3DropList[index].itemIndex);
-        }
-
-        public void giveLunarItem(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableLunarDropList = RoR2.Run.instance.availableLunarDropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableLunarDropList.Count);
-            master.inventory.GiveItem(availableLunarDropList[index].itemIndex);
-        }
-
-        public void giveEquipment(float offSet, RoR2.CharacterMaster master)
-        {
-            List<RoR2.PickupIndex> availableEquipmentDropList = RoR2.Run.instance.availableEquipmentDropList;
-            int index = RoR2.Run.instance.treasureRng.RangeInt(0, availableEquipmentDropList.Count);
-            master.inventory.GiveItem(availableEquipmentDropList[index].itemIndex);
-        }
     }
 }
+*/
