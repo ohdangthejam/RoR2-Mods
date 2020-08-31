@@ -26,28 +26,106 @@ namespace OhDangTheMods
     {
         private const string ModGuid = "com.OhDangTheJam.LevelUpProgressionPlugin";
 
+        private GameObject currentUIObject;
         private bool showUI = false;
         private static int levelsSpent = 0;
         private int levelsTotal = 0;
         private bool startMessage = true;
         private RoR2.CharacterMaster currentPlayer;
+        private List<RoR2.PickupIndex> currentPerkSelection;
+
+        public UnityEvent onHotKey1Handler = new UnityEvent();
+        public UnityEvent onHotKey2Handler = new UnityEvent();
+        public UnityEvent onHotKey3Handler = new UnityEvent();
+        public UnityAction HotKey1Action = null;
+        public UnityAction HotKey2Action = null;
+        public UnityAction HotKey3Action = null;
 
         public static ConfigWrapper<int> choiceScaler { get; set; }
         public void initConfig()
         {
+
             LevelUpProgressionPlugin.choiceScaler = base.Config.Wrap<int>("CustomCommandPlugin choice scaler", "Choice Scaler", "Determine how many items to choose from upon level up. Default: 3.", 3);
+
         }
 
         public void Start()
         {
+
             var miniRpc = MiniRpc.CreateInstance(ModGuid);
             RoR2.Chat.AddMessage("Level up progression activated.");
             this.initConfig();
 
+            HotKey1Action = new UnityAction(delegate ()
+            {
+                RoR2.Chat.AddMessage("HotKey1 Confirmed");
+                onHotKey1Handler.RemoveListener(HotKey1Action);
+                ConfirmSelectionHotkey(1);
+            });
+
+            HotKey2Action = new UnityAction(delegate ()
+            {
+                RoR2.Chat.AddMessage("HotKey2 Confirmed");
+                onHotKey2Handler.RemoveListener(HotKey2Action);
+                ConfirmSelectionHotkey(2);
+            });
+
+            HotKey3Action = new UnityAction(delegate ()
+            {
+                RoR2.Chat.AddMessage("HotKey3 Confirmed");
+                onHotKey3Handler.RemoveListener(HotKey3Action);
+                ConfirmSelectionHotkey(3);
+            });
         }
+
+        void ConfirmSelectionHotkey( int hotkey )
+        {
+
+            if (currentPerkSelection.Count < 3)
+                return;
+
+            RoR2.PickupIndex index = currentPerkSelection[0];
+            if (hotkey == 1)
+                index = currentPerkSelection[0];
+            if (hotkey == 2)
+                index = currentPerkSelection[1];
+            if (hotkey == 3)
+                index = currentPerkSelection[2];
+
+            Logger.LogInfo("Item picked: " + index);
+            UnityEngine.Object.Destroy(currentUIObject);
+            GetCurrentPlayer().inventory.GiveItem(index.itemIndex);
+
+            showUI = false;
+            levelsSpent += 1;
+            if (levelsSpent >= 0 && levelsSpent < levelsTotal)
+                ShowItemPicker(GetAvailablePickups(), GetCurrentPlayer());
+        }
+
 
         public void Update()
         {
+
+            if (showUI)
+            {
+
+                if (Input.GetKeyDown(KeyCode.Alpha1))
+                {
+                    RoR2.Chat.AddMessage("Hotkey 1 pressed.");
+                    onHotKey1Handler.Invoke();
+                }
+                if (Input.GetKeyDown(KeyCode.Alpha2))
+                {
+                    RoR2.Chat.AddMessage("Hotkey 2 pressed.");
+                    onHotKey2Handler.Invoke();
+                }
+                if (Input.GetKeyDown(KeyCode.Alpha3))
+                {
+                    RoR2.Chat.AddMessage("Hotkey 3 pressed.");
+                    onHotKey3Handler.Invoke();
+                }
+                
+            }
             if (Input.GetKeyDown(KeyCode.Alpha9))
                 RoR2.PlayerCharacterMasterController.instances[0].master.GiveExperience(10000);
         }
@@ -164,11 +242,16 @@ namespace OhDangTheMods
                     availablePickups.Add(selectedPickups[currentPickup]);
                 }
             }
+            currentPerkSelection.Clear();
+            currentPerkSelection.AddRange( availablePickups );
             return availablePickups;
         }
 
+
+
         public void ShowItemPicker(List<RoR2.PickupIndex> availablePickups, RoR2.CharacterMaster master)
         {
+
             showUI = true;
 
             var itemInventoryDisplay = GameObject.Find("ItemInventoryDisplay");
@@ -176,6 +259,7 @@ namespace OhDangTheMods
             float uiWidth = 220f;
             Logger.Log(LogLevel.Info, "Run started");
             var g = new GameObject();
+            currentUIObject = g;
             g.name = "LevelUpProgressionUI";
             g.layer = 5; // UI
             g.AddComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
@@ -258,6 +342,29 @@ namespace OhDangTheMods
                 item.SetItemIndex(index.itemIndex, 1);
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
+                    ConfirmSelection();
+                });
+
+                if (index == availablePickups[0])
+                {
+                    RoR2.Chat.AddMessage("Listener Added: " + availablePickups[0].GetPickupNameToken() + " (1).");
+                    onHotKey1Handler.AddListener(HotKey1Action);
+                }
+
+                if (index == availablePickups[1])
+                {
+                    RoR2.Chat.AddMessage("Listener Added: " + availablePickups[1].GetPickupNameToken() + " (2).");
+                    onHotKey2Handler.AddListener(HotKey2Action);
+                }
+
+                if (index == availablePickups[2])
+                {
+                    RoR2.Chat.AddMessage("Listener Added: " + availablePickups[2].GetPickupNameToken() + " (3).");
+                    onHotKey3Handler.AddListener(HotKey3Action);
+                }
+
+                void ConfirmSelection()
+                {
                     Logger.LogInfo("Item picked: " + index);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveItem(index.itemIndex);
@@ -266,7 +373,7 @@ namespace OhDangTheMods
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
-                });
+                }
             }
             foreach (RoR2.PickupIndex index in availablePickups)
             {
@@ -282,6 +389,30 @@ namespace OhDangTheMods
                 item.tooltipProvider.bodyColor = Color.gray;
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
+                    ConfirmSelection();
+                });
+
+                if (index == availablePickups[0])
+                {
+                    RoR2.Chat.AddMessage("Listener Added: " + availablePickups[0].GetPickupNameToken() + " (1).");
+                    onHotKey1Handler.AddListener(HotKey1Action);
+                }
+
+                if (index == availablePickups[1])
+                {
+                    RoR2.Chat.AddMessage("Listener Added: " + availablePickups[1].GetPickupNameToken() + " (2).");
+                    onHotKey2Handler.AddListener(HotKey2Action);
+                }
+
+                if (index == availablePickups[2])
+                {
+                    RoR2.Chat.AddMessage("Listener Added: " + availablePickups[2].GetPickupNameToken() + " (3).");
+                    onHotKey3Handler.AddListener(HotKey3Action);
+                }
+                    
+
+                void ConfirmSelection()
+                {
                     Logger.LogInfo("Equipment picked: " + index);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveEquipmentString(def.name);
@@ -290,10 +421,11 @@ namespace OhDangTheMods
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
-                });
+                }
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate(itemCtr.GetComponent<RectTransform>());
             ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 45f);
+
         }
 
     }
