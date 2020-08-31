@@ -19,7 +19,7 @@ using UnityEngine.Events;
 
 namespace OhDangTheMods
 {
-
+    //
     [BepInPlugin(ModGuid, "LevelUpProgressionPlugin", "1.0.0")]
     [BepInDependency(MiniRpcPlugin.Dependency)]
     public class LevelUpProgressionPlugin : BaseUnityPlugin
