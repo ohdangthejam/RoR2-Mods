@@ -19,9 +19,6 @@ using UnityEngine.Events;
 
 namespace OhDangTheMods
 {
-    /// <summary>
-    /// 
-    /// </summary>
     [BepInPlugin(ModGuid, "LevelUpProgressionPlugin", "1.0.0")]
     [BepInDependency(MiniRpcPlugin.Dependency)]
     public class LevelUpProgressionPlugin : BaseUnityPlugin
@@ -33,6 +30,7 @@ namespace OhDangTheMods
         private int levelsTotal = 0;
         private bool startMessage = true;
         private RoR2.CharacterMaster currentPlayer;
+        private List<Button> currentButtons = new List<Button>();
 
         public static ConfigWrapper<int> choiceScaler { get; set; }
         public void initConfig()
@@ -51,7 +49,13 @@ namespace OhDangTheMods
         public void Update()
         {
             if (Input.GetKeyDown(KeyCode.Alpha9))
-                RoR2.PlayerCharacterMasterController.instances[0].master.GiveExperience(10000);
+                RoR2.PlayerCharacterMasterController.instances[0].master.GiveExperience(30000);
+            if (Input.GetKeyDown(KeyCode.Alpha1) && currentButtons[0] != null)
+                currentButtons[0].onClick.Invoke();
+            if (Input.GetKeyDown(KeyCode.Alpha2) && currentButtons[0] != null)
+                currentButtons[1].onClick.Invoke();
+            if (Input.GetKeyDown(KeyCode.Alpha3) && currentButtons[0] != null)
+                currentButtons[2].onClick.Invoke();
         }
 
         public void Awake()
@@ -84,6 +88,7 @@ namespace OhDangTheMods
                 orig.Invoke(self);
 
                 showUI = false;
+                currentButtons.Clear();
 
                 RoR2.Chat.AddMessage("1. BeginStage");
                 if ((levelsTotal > 0 && levelsSpent < levelsTotal) || levelsTotal <= 0)
@@ -103,10 +108,8 @@ namespace OhDangTheMods
 
                 levelsTotal = (int)RoR2.TeamManager.instance.GetTeamLevel(RoR2.PlayerCharacterMasterController.instances[0].master.teamIndex);
 
-                //RoR2.Chat.AddMessage("test spent: " + levelsSpent);
-                if (levelsTotal > 0 && levelsSpent < levelsTotal) // 
+                if (levelsTotal > 0 && levelsSpent < levelsTotal)
                 {
-                    //RoR2.Chat.AddMessage("Level up: " + levelsTotal);
                     int count = RoR2.PlayerCharacterMasterController.instances.Count;
                     for (int i = 0; i < count; i++)
                     {
@@ -252,29 +255,40 @@ namespace OhDangTheMods
             itemCtr.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             var itemIconPrefab = itemInventoryDisplay.GetComponent<ItemInventoryDisplay>().itemIconPrefab;
-            foreach (RoR2.PickupIndex index in availablePickups)
+
+            for (int i = 0; i <= availablePickups.Count-1; i++)
             {
-                if (index.itemIndex == ItemIndex.None)
+                if (availablePickups[i].itemIndex == ItemIndex.None)
                     continue;
                 var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
-                item.SetItemIndex(index.itemIndex, 1);
+                item.SetItemIndex(availablePickups[i].itemIndex, 1);
+
+                RoR2.Chat.AddMessage("Pre-listener, items. i == " + i);
+
+                var temp = i;
+
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
-                    Logger.LogInfo("Item picked: " + index);
+                    Logger.LogInfo("Item picked: " + availablePickups[temp]);
                     UnityEngine.Object.Destroy(g);
-                    master.inventory.GiveItem(index.itemIndex);
+                    master.inventory.GiveItem(availablePickups[temp].itemIndex);
 
                     showUI = false;
+                    currentButtons.Clear();
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
                 });
+
+                currentButtons.Insert(i, item.gameObject.GetComponent<Button>());
+
             }
-            foreach (RoR2.PickupIndex index in availablePickups)
+
+            for (int i = 0; i <= availablePickups.Count-1; i++)
             {
-                if (index.equipmentIndex == EquipmentIndex.None)
+                if (availablePickups[i].equipmentIndex == EquipmentIndex.None)
                     continue;
-                var def = RoR2.EquipmentCatalog.GetEquipmentDef(index.equipmentIndex);
+                var def = RoR2.EquipmentCatalog.GetEquipmentDef(availablePickups[i].equipmentIndex);
                 var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
                 item.GetComponent<RawImage>().texture = def.pickupIconTexture;
                 item.stackText.enabled = false;
@@ -282,18 +296,28 @@ namespace OhDangTheMods
                 item.tooltipProvider.titleColor = RoR2.ColorCatalog.GetColor(def.colorIndex);
                 item.tooltipProvider.bodyToken = def.pickupToken;
                 item.tooltipProvider.bodyColor = Color.gray;
+
+                RoR2.Chat.AddMessage("Pre-listener, equipment. i == " + i);
+
+                var temp = i;
+
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
-                    Logger.LogInfo("Equipment picked: " + index);
+                    Logger.LogInfo("Equipment picked: " + availablePickups[temp]);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveEquipmentString(def.name);
 
                     showUI = false;
+                    currentButtons.Clear();
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
                 });
+
+                currentButtons.Insert(i, item.gameObject.GetComponent<Button>());
+
             }
+
             LayoutRebuilder.ForceRebuildLayoutImmediate(itemCtr.GetComponent<RectTransform>());
             ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 45f);
         }
