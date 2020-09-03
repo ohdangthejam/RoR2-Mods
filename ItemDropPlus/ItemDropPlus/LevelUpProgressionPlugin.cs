@@ -204,27 +204,60 @@ namespace OhDangTheMods
             
             List<RoR2.PickupIndex> RollPickupList()
             {
-
+                RoR2.Chat.AddMessage("Min Level: " + lowerLevel.Value + " Max Level: " + upperLevel.Value + " Dif: " + difference + " Coef: " +
+                    coefficient + " Scaler: " + scaler + " Total Minimum: " + totalMinimum + " Total Maximum: " + totalMaximum + " Total Difference: "
+                    + totalDifference + " Current Total: " + currentTotal);
                 float roll = UnityEngine.Random.Range(0, currentTotal);
                 List<RoR2.PickupIndex> dropList = new List<RoR2.PickupIndex>();
 
-                if (roll <= lowerLevelTier1Weight.Value * (scaler + 1))
+                float checkLevel = lowerLevelTier1Weight.Value * (scaler + 1);
+                if (roll <= checkLevel)
+                {
+                    
+                    RoR2.Chat.AddMessage("Tier 1: " + checkLevel);
+                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier1DropList);
-                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1)))
+                    return dropList;
+                }
+                checkLevel += lowerLevelTier2Weight.Value * (scaler + 1);
+                if (roll <= checkLevel)
+                {
+                    RoR2.Chat.AddMessage("Tier 2: " + checkLevel);
+                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier2DropList);
-                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1))
-                    + (lowerLevelTier3Weight.Value * (scaler + 1)))
+                    return dropList;
+                }
+                checkLevel += lowerLevelTier3Weight.Value * (scaler + 1);
+                if (roll <= checkLevel)
+                {
+                    RoR2.Chat.AddMessage("Tier 3: " + checkLevel);
+                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier3DropList);
-                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1))
-                    + (lowerLevelTier3Weight.Value * (scaler + 1)) + (lowerLevelLunarWeight.Value * (scaler + 1)))
+                    return dropList;
+                }
+                checkLevel += lowerLevelLunarWeight.Value * (scaler + 1);
+                if (roll <= checkLevel)
+                {
+                    RoR2.Chat.AddMessage("Tier Lunar: " + checkLevel);
+                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableLunarDropList);
-                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1))
-                    + (lowerLevelTier3Weight.Value * (scaler + 1)) + (lowerLevelLunarWeight.Value * (scaler + 1)))
+                    return dropList;
+                }
+                checkLevel += lowerLevelEquipmentWeight.Value * (scaler + 1);
+                if (roll <= checkLevel)
+                {
+                    RoR2.Chat.AddMessage("Tier Equipment: " + checkLevel);
+                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableEquipmentDropList);
+                    return dropList;
+                }  
                 else
-                    dropList.AddRange(RoR2.Run.instance.availableTier1DropList);
-
-                return dropList;
+                {
+                    RoR2.Chat.AddMessage("Defaulted.");
+                    RoR2.Chat.AddMessage("Check Level: " + checkLevel);
+                    RoR2.Chat.AddMessage("Roll: " + roll);
+                    return dropList;
+                }
 
             }
 
@@ -240,9 +273,19 @@ namespace OhDangTheMods
             }
 
             List<RoR2.PickupIndex> selectedPickups = new List<RoR2.PickupIndex>();
-            selectedPickups.Add(RandomFromList(RollPickupList()));
-            selectedPickups.Add(RandomFromList(RollPickupList()));
-            selectedPickups.Add(RandomFromList(RollPickupList()));
+            while (selectedPickups.Count < 3)
+            {
+                List<RoR2.PickupIndex> tierList = RollPickupList();
+                RoR2.PickupIndex attemptedPickup = RandomFromList(tierList);
+
+                for (int i = 0; i <= selectedPickups.Count - 1; i++)
+                {
+                    if (attemptedPickup.itemIndex == selectedPickups[i].itemIndex)
+                        attemptedPickup = RandomFromList(tierList);
+                }
+
+                selectedPickups.Add(attemptedPickup);
+            }
 
             return selectedPickups;
 
