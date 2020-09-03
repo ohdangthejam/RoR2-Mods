@@ -19,10 +19,13 @@ using UnityEngine.Events;
 
 namespace OhDangTheMods
 {
+
     [BepInPlugin(ModGuid, "LevelUpProgressionPlugin", "1.0.0")]
     [BepInDependency(MiniRpcPlugin.Dependency)]
+
     public class LevelUpProgressionPlugin : BaseUnityPlugin
     {
+
         private const string ModGuid = "com.OhDangTheJam.LevelUpProgressionPlugin";
 
         private bool showUI = false;
@@ -30,32 +33,64 @@ namespace OhDangTheMods
         private int levelsTotal = 0;
         private bool startMessage = true;
         private RoR2.CharacterMaster currentPlayer;
-        private List<Button> currentButtons = new List<Button>();
+        private Button button1 = null;
+        private Button button2 = null;
+        private Button button3 = null;
 
-        public static ConfigWrapper<int> choiceScaler { get; set; }
+        public static ConfigWrapper<int> lowerLevel { get; set; }
+        public static ConfigWrapper<int> upperLevel { get; set; }
+
+        public static ConfigWrapper<float> lowerLevelTier1Weight { get; set; }
+        public static ConfigWrapper<float> lowerLevelTier2Weight { get; set; }
+        public static ConfigWrapper<float> lowerLevelTier3Weight { get; set; }
+        public static ConfigWrapper<float> lowerLevelLunarWeight { get; set; }
+        public static ConfigWrapper<float> lowerLevelEquipmentWeight { get; set; }
+
+        public static ConfigWrapper<float> upperLevelTier1Weight { get; set; }
+        public static ConfigWrapper<float> upperLevelTier2Weight { get; set; }
+        public static ConfigWrapper<float> upperLevelTier3Weight { get; set; }
+        public static ConfigWrapper<float> upperLevelLunarWeight { get; set; }
+        public static ConfigWrapper<float> upperLevelEquipmentWeight { get; set; }
+
         public void initConfig()
         {
-            LevelUpProgressionPlugin.choiceScaler = base.Config.Wrap<int>("CustomCommandPlugin choice scaler", "Choice Scaler", "Determine how many items to choose from upon level up. Default: 3.", 3);
+
+            LevelUpProgressionPlugin.lowerLevel = base.Config.Wrap<int>("CustomCommandPlugin lower level", "Lower Level", "Determines the level that rarity chances begin scaling. Default: 1.", 2);
+            LevelUpProgressionPlugin.upperLevel = base.Config.Wrap<int>("CustomCommandPlugin upper level", "Upper Level", "Determines the level that rarity chances stop scaling. Default: 30.", 30);
+
+            LevelUpProgressionPlugin.lowerLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 1 weight", "Lower Level Tier 1 Weight", "Determines the weight of tier 1 drops at the lower level. Default 60.", 60);
+            LevelUpProgressionPlugin.lowerLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 2 weight", "Lower Level Tier 2 Weight", "Determines the weight of tier 2 drops at the lower level. Default 25.", 25);
+            LevelUpProgressionPlugin.lowerLevelTier3Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 3 weight", "Lower Level Tier 3 Weight", "Determines the weight of tier 3 drops at the lower level. Default 0.5.", 0.5f);
+            LevelUpProgressionPlugin.lowerLevelLunarWeight = base.Config.Wrap<float>("CustomCommandPlugin lower level lunar weight", "Lower Level Lunar Weight", "Determines the weight of lunar drops at the lower level. Default 4.5.", 4.5f);
+            LevelUpProgressionPlugin.lowerLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin lower level equipment weight", "Lower Level Equipment Weight", "Determines the weight of equipment drops at the lower level. Default 10.", 10);
+
+            LevelUpProgressionPlugin.upperLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 1 weight", "Upper Level Tier 1 Weight", "Determines the weight of tier 1 drops at the upper level. Default 30.", 30);
+            LevelUpProgressionPlugin.upperLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 2 weight", "Upper Level Tier 2 Weight", "Determines the weight of tier 2 drops at the upper level. Default 35.", 35);
+            LevelUpProgressionPlugin.upperLevelTier3Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 3 weight", "Upper Level Tier 3 Weight", "Determines the weight of tier 3 drops at the upper level. Default 25.", 25);
+            LevelUpProgressionPlugin.upperLevelLunarWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level lunar weight", "Upper Level Lunar Weight", "Determines the weight of lunar drops at the upper level. Default 5.", 5);
+            LevelUpProgressionPlugin.upperLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level equipment weight", "Upper Level Equipment Weight", "Determines the weight of equipment drops at the upper level. Default 5.", 5);
+
         }
 
         public void Start()
         {
+
             var miniRpc = MiniRpc.CreateInstance(ModGuid);
-            RoR2.Chat.AddMessage("Level up progression activated.");
             this.initConfig();
 
         }
 
         public void Update()
         {
+
             if (Input.GetKeyDown(KeyCode.Alpha9))
                 RoR2.PlayerCharacterMasterController.instances[0].master.GiveExperience(30000);
-            if (Input.GetKeyDown(KeyCode.Alpha1) && currentButtons[0] != null)
-                currentButtons[0].onClick.Invoke();
-            if (Input.GetKeyDown(KeyCode.Alpha2) && currentButtons[0] != null)
-                currentButtons[1].onClick.Invoke();
-            if (Input.GetKeyDown(KeyCode.Alpha3) && currentButtons[0] != null)
-                currentButtons[2].onClick.Invoke();
+            if (Input.GetKeyDown(KeyCode.Alpha1) && button1 != null)
+                button1.onClick.Invoke();
+            if (Input.GetKeyDown(KeyCode.Alpha2) && button2 != null)
+                button2.onClick.Invoke();
+            if (Input.GetKeyDown(KeyCode.Alpha3) && button3 != null)
+                button3.onClick.Invoke();
         }
 
         public void Awake()
@@ -88,37 +123,42 @@ namespace OhDangTheMods
                 orig.Invoke(self);
 
                 showUI = false;
-                currentButtons.Clear();
+                button1 = null;
+                button2 = null;
+                button3 = null;
 
-                RoR2.Chat.AddMessage("1. BeginStage");
                 if ((levelsTotal > 0 && levelsSpent < levelsTotal) || levelsTotal <= 0)
                 {
-                    RoR2.Chat.AddMessage("2. Points unspent. levelsSpent: " + levelsSpent + " levelsTotal: " + levelsTotal);
+
                     if (showUI == false)
                         StartCoroutine(ShowItemPickerCoroutine(3));
+
                 }
-                else
-                    RoR2.Chat.AddMessage("2. No remaining points. levelsSpent: " + levelsSpent + " levelsTotal: " + levelsTotal);
+
             };
 
             // On Level Up
             On.RoR2.GlobalEventManager.OnTeamLevelUp += delegate (On.RoR2.GlobalEventManager.orig_OnTeamLevelUp orig, TeamIndex self)
             {
-                orig.Invoke(self);
 
+                orig.Invoke(self);
                 levelsTotal = (int)RoR2.TeamManager.instance.GetTeamLevel(RoR2.PlayerCharacterMasterController.instances[0].master.teamIndex);
 
                 if (levelsTotal > 0 && levelsSpent < levelsTotal)
                 {
+
                     int count = RoR2.PlayerCharacterMasterController.instances.Count;
                     for (int i = 0; i < count; i++)
                     {
+
                         RoR2.CharacterMaster master = RoR2.PlayerCharacterMasterController.instances[i].master;
                         bool alive = master.hasBody;
                         if (alive)
                         {
+
                             if (showUI == false)
                                 ShowItemPicker(GetAvailablePickups(), master);
+
                         }
                     }
                 }
@@ -133,47 +173,84 @@ namespace OhDangTheMods
 
             RoR2.CharacterMaster master = GetCurrentPlayer();
             ShowItemPicker(GetAvailablePickups(), GetCurrentPlayer());
-            RoR2.Chat.AddMessage("3. Show item picker");
+
         }
 
         public RoR2.CharacterMaster GetCurrentPlayer()
         {
+
             if (this.currentPlayer == null)
             {
                 this.currentPlayer = RoR2.PlayerCharacterMasterController.instances[0].master;
             }
             return this.currentPlayer;
+
         }
 
         private List<RoR2.PickupIndex> GetAvailablePickups()
         {
-            var availablePickups = new List<RoR2.PickupIndex>();
-            var selectedPickups = new List<RoR2.PickupIndex>();
-            var tier = Mathf.RoundToInt(UnityEngine.Random.Range(0, 100));
-            if (tier <= 50)
-                selectedPickups.AddRange(RoR2.Run.instance.availableTier1DropList);
-            else if (tier <= 85)
-                selectedPickups.AddRange(RoR2.Run.instance.availableTier2DropList);
-            else if (tier <= 90)
-                selectedPickups.AddRange(RoR2.Run.instance.availableTier3DropList);
-            else if (tier <= 95)
-                selectedPickups.AddRange(RoR2.Run.instance.availableLunarDropList);
-            else if (tier <= 100)
-                selectedPickups.AddRange(RoR2.Run.instance.availableEquipmentDropList);
+            
+            float difference = upperLevel.Value - lowerLevel.Value;
 
-            if (selectedPickups.Count > 0)
+            float coefficient = (levelsSpent - lowerLevel.Value) / upperLevel.Value;
+            if (coefficient < 0) coefficient = 0;
+            
+            float scaler = (difference * coefficient);
+
+            float totalMinimum = lowerLevelTier1Weight.Value + lowerLevelTier2Weight.Value + lowerLevelTier3Weight.Value + lowerLevelLunarWeight.Value + lowerLevelEquipmentWeight.Value;
+            float totalMaximum = upperLevelTier1Weight.Value + upperLevelTier2Weight.Value + upperLevelTier3Weight.Value + upperLevelLunarWeight.Value + upperLevelEquipmentWeight.Value;
+            float totalDifference = totalMaximum - totalMinimum;
+            float currentTotal = (scaler * totalDifference) + totalMinimum;
+            
+            List<RoR2.PickupIndex> RollPickupList()
             {
-                for (var i = 0; i < choiceScaler.Value; i++)
-                {
-                    int currentPickup = Mathf.RoundToInt((UnityEngine.Random.Range(0, selectedPickups.Count - 1)));
-                    availablePickups.Add(selectedPickups[currentPickup]);
-                }
+
+                float roll = UnityEngine.Random.Range(0, currentTotal);
+                List<RoR2.PickupIndex> dropList = new List<RoR2.PickupIndex>();
+
+                if (roll <= lowerLevelTier1Weight.Value * (scaler + 1))
+                    dropList.AddRange(RoR2.Run.instance.availableTier1DropList);
+                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1)))
+                    dropList.AddRange(RoR2.Run.instance.availableTier2DropList);
+                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1))
+                    + (lowerLevelTier3Weight.Value * (scaler + 1)))
+                    dropList.AddRange(RoR2.Run.instance.availableTier3DropList);
+                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1))
+                    + (lowerLevelTier3Weight.Value * (scaler + 1)) + (lowerLevelLunarWeight.Value * (scaler + 1)))
+                    dropList.AddRange(RoR2.Run.instance.availableLunarDropList);
+                else if (roll <= (lowerLevelTier1Weight.Value * (scaler + 1)) + (lowerLevelTier2Weight.Value * (scaler + 1))
+                    + (lowerLevelTier3Weight.Value * (scaler + 1)) + (lowerLevelLunarWeight.Value * (scaler + 1)))
+                    dropList.AddRange(RoR2.Run.instance.availableEquipmentDropList);
+                else
+                    dropList.AddRange(RoR2.Run.instance.availableTier1DropList);
+
+                return dropList;
+
             }
-            return availablePickups;
+
+            RoR2.PickupIndex RandomFromList(List<RoR2.PickupIndex> list)
+            {
+
+                int selection = Mathf.RoundToInt((UnityEngine.Random.Range(0, list.Count - 1)));
+                if (selection < 0) selection = 0;
+                RoR2.PickupIndex selectedPickup = list[selection];
+
+                return selectedPickup;
+
+            }
+
+            List<RoR2.PickupIndex> selectedPickups = new List<RoR2.PickupIndex>();
+            selectedPickups.Add(RandomFromList(RollPickupList()));
+            selectedPickups.Add(RandomFromList(RollPickupList()));
+            selectedPickups.Add(RandomFromList(RollPickupList()));
+
+            return selectedPickups;
+
         }
 
         public void ShowItemPicker(List<RoR2.PickupIndex> availablePickups, RoR2.CharacterMaster master)
         {
+
             showUI = true;
 
             var itemInventoryDisplay = GameObject.Find("ItemInventoryDisplay");
@@ -254,42 +331,61 @@ namespace OhDangTheMods
             itemCtr.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 0);
             itemCtr.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var itemIconPrefab = itemInventoryDisplay.GetComponent<ItemInventoryDisplay>().itemIconPrefab;
+            var itemIconPrefab = itemInventoryDisplay.GetComponent<ItemInventoryDisplay>().itemIconPrefab;//ERROR HERE SOMEWHERE
 
-            for (int i = 0; i <= availablePickups.Count-1; i++)
+            foreach (RoR2.PickupIndex index in availablePickups)
             {
-                if (availablePickups[i].itemIndex == ItemIndex.None)
+                if (index.itemIndex == ItemIndex.None)
                     continue;
                 var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
-                item.SetItemIndex(availablePickups[i].itemIndex, 1);
 
-                RoR2.Chat.AddMessage("Pre-listener, items. i == " + i);
+                item.SetItemIndex(index.itemIndex, 1);
 
-                var temp = i;
+                var temp = index.value;
 
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
                     Logger.LogInfo("Item picked: " + availablePickups[temp]);
                     UnityEngine.Object.Destroy(g);
-                    master.inventory.GiveItem(availablePickups[temp].itemIndex);
+                    master.inventory.GiveItem(index.itemIndex);
 
                     showUI = false;
-                    currentButtons.Clear();
+                    button1 = null;
+                    button2 = null;
+                    button3 = null;
+
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
                 });
 
-                currentButtons.Insert(i, item.gameObject.GetComponent<Button>());
+                if (index == availablePickups[0])
+                {
+                    RoR2.Chat.AddMessage(index + " :: BUTTON 1");
+                    button1 = item.gameObject.GetComponent<Button>();
+                }
+                else if (index == availablePickups[1])
+                {
+                    RoR2.Chat.AddMessage(index + " :: BUTTON 2");
+                    button2 = item.gameObject.GetComponent<Button>();
+                }
+                else if (index == availablePickups[2])
+                {
+                    RoR2.Chat.AddMessage(index + " :: BUTTON 3");
+                    button3 = item.gameObject.GetComponent<Button>();
+                }
 
             }
 
-            for (int i = 0; i <= availablePickups.Count-1; i++)
+            foreach (RoR2.PickupIndex index in availablePickups)
             {
-                if (availablePickups[i].equipmentIndex == EquipmentIndex.None)
+
+                if (index.equipmentIndex == EquipmentIndex.None)
                     continue;
-                var def = RoR2.EquipmentCatalog.GetEquipmentDef(availablePickups[i].equipmentIndex);
+
+                var def = RoR2.EquipmentCatalog.GetEquipmentDef(index.equipmentIndex);
                 var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
+
                 item.GetComponent<RawImage>().texture = def.pickupIconTexture;
                 item.stackText.enabled = false;
                 item.tooltipProvider.titleToken = def.nameToken;
@@ -297,24 +393,39 @@ namespace OhDangTheMods
                 item.tooltipProvider.bodyToken = def.pickupToken;
                 item.tooltipProvider.bodyColor = Color.gray;
 
-                RoR2.Chat.AddMessage("Pre-listener, equipment. i == " + i);
-
-                var temp = i;
+                var temp = index.value;
 
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
-                    Logger.LogInfo("Equipment picked: " + availablePickups[temp]);
+                    Logger.LogInfo("Equipment picked: " + index);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveEquipmentString(def.name);
 
                     showUI = false;
-                    currentButtons.Clear();
+                    button1 = null;
+                    button2 = null;
+                    button3 = null;
+
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
                 });
 
-                currentButtons.Insert(i, item.gameObject.GetComponent<Button>());
+                if (index == availablePickups[0])
+                {
+                    RoR2.Chat.AddMessage(index + " :: BUTTON 1");
+                    button1 = item.gameObject.GetComponent<Button>();
+                }   
+                else if (index == availablePickups[1])
+                {
+                    RoR2.Chat.AddMessage(index + " :: BUTTON 2");
+                    button2 = item.gameObject.GetComponent<Button>();
+                }
+                else if (index == availablePickups[2])
+                {
+                    RoR2.Chat.AddMessage(index + " :: BUTTON 3");
+                    button3 = item.gameObject.GetComponent<Button>();
+                }
 
             }
 
