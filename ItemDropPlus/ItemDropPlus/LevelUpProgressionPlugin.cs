@@ -337,15 +337,16 @@ namespace OhDangTheMods
             {
                 if (index.itemIndex == ItemIndex.None)
                     continue;
+
                 var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
 
                 item.SetItemIndex(index.itemIndex, 1);
-
                 var temp = index.value;
 
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
-                    Logger.LogInfo("Item picked: " + availablePickups[temp]);
+                    RoR2.Chat.AddMessage("Item 4");
+                    Logger.LogInfo("Item picked: " + index);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveItem(index.itemIndex);
 
@@ -353,25 +354,20 @@ namespace OhDangTheMods
                     button1 = null;
                     button2 = null;
                     button3 = null;
-
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
                 });
-
                 if (index == availablePickups[0])
                 {
-                    RoR2.Chat.AddMessage(index + " :: BUTTON 1");
                     button1 = item.gameObject.GetComponent<Button>();
                 }
                 else if (index == availablePickups[1])
                 {
-                    RoR2.Chat.AddMessage(index + " :: BUTTON 2");
                     button2 = item.gameObject.GetComponent<Button>();
                 }
                 else if (index == availablePickups[2])
                 {
-                    RoR2.Chat.AddMessage(index + " :: BUTTON 3");
                     button3 = item.gameObject.GetComponent<Button>();
                 }
 
@@ -382,30 +378,24 @@ namespace OhDangTheMods
 
                 if (index.equipmentIndex == EquipmentIndex.None)
                     continue;
-
                 var def = RoR2.EquipmentCatalog.GetEquipmentDef(index.equipmentIndex);
                 var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
-
                 item.GetComponent<RawImage>().texture = def.pickupIconTexture;
                 item.stackText.enabled = false;
                 item.tooltipProvider.titleToken = def.nameToken;
                 item.tooltipProvider.titleColor = RoR2.ColorCatalog.GetColor(def.colorIndex);
                 item.tooltipProvider.bodyToken = def.pickupToken;
                 item.tooltipProvider.bodyColor = Color.gray;
-
                 var temp = index.value;
-
                 item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
                     Logger.LogInfo("Equipment picked: " + index);
                     UnityEngine.Object.Destroy(g);
                     master.inventory.GiveEquipmentString(def.name);
-
                     showUI = false;
                     button1 = null;
                     button2 = null;
                     button3 = null;
-
                     levelsSpent += 1;
                     if (levelsSpent >= 0 && levelsSpent < levelsTotal)
                         ShowItemPicker(GetAvailablePickups(), master);
@@ -413,17 +403,14 @@ namespace OhDangTheMods
 
                 if (index == availablePickups[0])
                 {
-                    RoR2.Chat.AddMessage(index + " :: BUTTON 1");
                     button1 = item.gameObject.GetComponent<Button>();
                 }   
                 else if (index == availablePickups[1])
                 {
-                    RoR2.Chat.AddMessage(index + " :: BUTTON 2");
                     button2 = item.gameObject.GetComponent<Button>();
                 }
                 else if (index == availablePickups[2])
                 {
-                    RoR2.Chat.AddMessage(index + " :: BUTTON 3");
                     button3 = item.gameObject.GetComponent<Button>();
                 }
 
