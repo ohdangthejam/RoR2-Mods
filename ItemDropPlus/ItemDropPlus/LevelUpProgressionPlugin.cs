@@ -189,32 +189,32 @@ namespace OhDangTheMods
 
         private List<RoR2.PickupIndex> GetAvailablePickups()
         {
-            
+
             float difference = upperLevel.Value - lowerLevel.Value;
 
             float coefficient = (levelsSpent - lowerLevel.Value) / upperLevel.Value;
             if (coefficient < 0) coefficient = 0;
-            
+
             float scaler = (difference * coefficient);
 
             float totalMinimum = lowerLevelTier1Weight.Value + lowerLevelTier2Weight.Value + lowerLevelTier3Weight.Value + lowerLevelLunarWeight.Value + lowerLevelEquipmentWeight.Value;
             float totalMaximum = upperLevelTier1Weight.Value + upperLevelTier2Weight.Value + upperLevelTier3Weight.Value + upperLevelLunarWeight.Value + upperLevelEquipmentWeight.Value;
             float totalDifference = totalMaximum - totalMinimum;
             float currentTotal = (scaler * totalDifference) + totalMinimum;
-            
+
             List<RoR2.PickupIndex> RollPickupList()
             {
-                RoR2.Chat.AddMessage("Min Level: " + lowerLevel.Value + " Max Level: " + upperLevel.Value + " Dif: " + difference + " Coef: " +
-                    coefficient + " Scaler: " + scaler + " Total Minimum: " + totalMinimum + " Total Maximum: " + totalMaximum + " Total Difference: "
-                    + totalDifference + " Current Total: " + currentTotal);
+                //RoR2.Chat.AddMessage("Min Level: " + lowerLevel.Value + " Max Level: " + upperLevel.Value + " Dif: " + difference + " Coef: " +
+                //    coefficient + " Scaler: " + scaler + " Total Minimum: " + totalMinimum + " Total Maximum: " + totalMaximum + " Total Difference: "
+                //    + totalDifference + " Current Total: " + currentTotal);
                 float roll = UnityEngine.Random.Range(0, currentTotal);
                 List<RoR2.PickupIndex> dropList = new List<RoR2.PickupIndex>();
 
                 float checkLevel = lowerLevelTier1Weight.Value * (scaler + 1);
                 if (roll <= checkLevel)
                 {
-                    
-                    RoR2.Chat.AddMessage("Tier 1: " + checkLevel);
+
+                    //RoR2.Chat.AddMessage("Tier 1: " + checkLevel);
                     RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier1DropList);
                     return dropList;
@@ -222,7 +222,7 @@ namespace OhDangTheMods
                 checkLevel += lowerLevelTier2Weight.Value * (scaler + 1);
                 if (roll <= checkLevel)
                 {
-                    RoR2.Chat.AddMessage("Tier 2: " + checkLevel);
+                    //RoR2.Chat.AddMessage("Tier 2: " + checkLevel);
                     RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier2DropList);
                     return dropList;
@@ -230,7 +230,7 @@ namespace OhDangTheMods
                 checkLevel += lowerLevelTier3Weight.Value * (scaler + 1);
                 if (roll <= checkLevel)
                 {
-                    RoR2.Chat.AddMessage("Tier 3: " + checkLevel);
+                    //RoR2.Chat.AddMessage("Tier 3: " + checkLevel);
                     RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier3DropList);
                     return dropList;
@@ -238,7 +238,7 @@ namespace OhDangTheMods
                 checkLevel += lowerLevelLunarWeight.Value * (scaler + 1);
                 if (roll <= checkLevel)
                 {
-                    RoR2.Chat.AddMessage("Tier Lunar: " + checkLevel);
+                    //RoR2.Chat.AddMessage("Tier Lunar: " + checkLevel);
                     RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableLunarDropList);
                     return dropList;
@@ -246,15 +246,15 @@ namespace OhDangTheMods
                 checkLevel += lowerLevelEquipmentWeight.Value * (scaler + 1);
                 if (roll <= checkLevel)
                 {
-                    RoR2.Chat.AddMessage("Tier Equipment: " + checkLevel);
+                    //RoR2.Chat.AddMessage("Tier Equipment: " + checkLevel);
                     RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableEquipmentDropList);
                     return dropList;
-                }  
+                }
                 else
                 {
                     RoR2.Chat.AddMessage("Defaulted.");
-                    RoR2.Chat.AddMessage("Check Level: " + checkLevel);
+                    //RoR2.Chat.AddMessage("Check Level: " + checkLevel);
                     RoR2.Chat.AddMessage("Roll: " + roll);
                     return dropList;
                 }
@@ -378,76 +378,61 @@ namespace OhDangTheMods
 
             foreach (RoR2.PickupIndex index in availablePickups)
             {
-                if (index.itemIndex == ItemIndex.None)
-                    continue;
-
                 var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
-
-                item.SetItemIndex(index.itemIndex, 1);
-                var temp = index.value;
-
-                item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
-                {
-                    RoR2.Chat.AddMessage("Item 4");
-                    Logger.LogInfo("Item picked: " + index);
-                    UnityEngine.Object.Destroy(g);
-                    master.inventory.GiveItem(index.itemIndex);
-
-                    showUI = false;
-                    button1 = null;
-                    button2 = null;
-                    button3 = null;
-                    levelsSpent += 1;
-                    if (levelsSpent >= 0 && levelsSpent < levelsTotal)
-                        ShowItemPicker(GetAvailablePickups(), master);
-                });
-                if (index == availablePickups[0])
-                {
-                    button1 = item.gameObject.GetComponent<Button>();
-                }
-                else if (index == availablePickups[1])
-                {
-                    button2 = item.gameObject.GetComponent<Button>();
-                }
-                else if (index == availablePickups[2])
-                {
-                    button3 = item.gameObject.GetComponent<Button>();
-                }
-
-            }
-
-            foreach (RoR2.PickupIndex index in availablePickups)
-            {
 
                 if (index.equipmentIndex == EquipmentIndex.None)
-                    continue;
-                var def = RoR2.EquipmentCatalog.GetEquipmentDef(index.equipmentIndex);
-                var item = Instantiate<GameObject>(itemIconPrefab, itemCtr.transform).GetComponent<ItemIcon>();
-                item.GetComponent<RawImage>().texture = def.pickupIconTexture;
-                item.stackText.enabled = false;
-                item.tooltipProvider.titleToken = def.nameToken;
-                item.tooltipProvider.titleColor = RoR2.ColorCatalog.GetColor(def.colorIndex);
-                item.tooltipProvider.bodyToken = def.pickupToken;
-                item.tooltipProvider.bodyColor = Color.gray;
-                var temp = index.value;
-                item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                 {
-                    Logger.LogInfo("Equipment picked: " + index);
-                    UnityEngine.Object.Destroy(g);
-                    master.inventory.GiveEquipmentString(def.name);
-                    showUI = false;
-                    button1 = null;
-                    button2 = null;
-                    button3 = null;
-                    levelsSpent += 1;
-                    if (levelsSpent >= 0 && levelsSpent < levelsTotal)
-                        ShowItemPicker(GetAvailablePickups(), master);
-                });
+
+                    item.SetItemIndex(index.itemIndex, 1);
+                    var temp = index.value;
+
+                    item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
+                    {
+                        RoR2.Chat.AddMessage(currentPlayer.playerControllerId + " chose " + index.GetPickupNameToken() + ".");
+                        Logger.LogInfo("Item picked: " + index);
+                        UnityEngine.Object.Destroy(g);
+                        master.inventory.GiveItem(index.itemIndex);
+
+                        showUI = false;
+                        button1 = null;
+                        button2 = null;
+                        button3 = null;
+                        levelsSpent += 1;
+                        if (levelsSpent >= 0 && levelsSpent < levelsTotal)
+                            ShowItemPicker(GetAvailablePickups(), master);
+                    });
+                }
+
+                if (index.itemIndex == ItemIndex.None)
+                {
+                    var def = RoR2.EquipmentCatalog.GetEquipmentDef(index.equipmentIndex);
+                    item.GetComponent<RawImage>().texture = def.pickupIconTexture;
+                    item.stackText.enabled = false;
+                    item.tooltipProvider.titleToken = def.nameToken;
+                    item.tooltipProvider.titleColor = RoR2.ColorCatalog.GetColor(def.colorIndex);
+                    item.tooltipProvider.bodyToken = def.pickupToken;
+                    item.tooltipProvider.bodyColor = Color.gray;
+                    var temp = index.value;
+                    item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
+                    {
+                        Logger.LogInfo("Equipment picked: " + index);
+                        RoR2.Chat.AddMessage(currentPlayer.playerControllerId + " chose " + index.GetPickupNameToken() + ".");
+                        UnityEngine.Object.Destroy(g);
+                        master.inventory.GiveEquipmentString(def.name);
+                        showUI = false;
+                        button1 = null;
+                        button2 = null;
+                        button3 = null;
+                        levelsSpent += 1;
+                        if (levelsSpent >= 0 && levelsSpent < levelsTotal)
+                            ShowItemPicker(GetAvailablePickups(), master);
+                    });
+                }
 
                 if (index == availablePickups[0])
                 {
                     button1 = item.gameObject.GetComponent<Button>();
-                }   
+                }
                 else if (index == availablePickups[1])
                 {
                     button2 = item.gameObject.GetComponent<Button>();
