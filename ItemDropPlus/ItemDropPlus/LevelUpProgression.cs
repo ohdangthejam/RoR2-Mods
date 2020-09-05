@@ -57,20 +57,20 @@ namespace OhDangTheMods
         public void initConfig()
         {
 
-            LevelUpProgression.lowerLevel = base.Config.Wrap<int>("CustomCommandPlugin lower level", "Lower Level", "Determines the level that rarity chances begin scaling. Default: 1.", 1);
-            LevelUpProgression.upperLevel = base.Config.Wrap<int>("CustomCommandPlugin upper level", "Upper Level", "Determines the level that rarity chances stop scaling. Default: 30.", 30);
+            LevelUpProgression.lowerLevel = base.Config.Wrap<int>("Scaling Range", "Lower Level", "Determines the level that rarity chances begin scaling. Default: 1.", 1);
+            LevelUpProgression.upperLevel = base.Config.Wrap<int>("Scaling Range", "Upper Level", "Determines the level that rarity chances stop scaling. Default: 30.", 30);
 
-            LevelUpProgression.lowerLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 1 weight", "Lower Level Tier 1 Weight", "Determines the weight of tier 1 drops at the lower level. Default 60.", 60f);
-            LevelUpProgression.lowerLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 2 weight", "Lower Level Tier 2 Weight", "Determines the weight of tier 2 drops at the lower level. Default 25.", 25f);
-            LevelUpProgression.lowerLevelTier3Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 3 weight", "Lower Level Tier 3 Weight", "Determines the weight of tier 3 drops at the lower level. Default 0.5.", 0.5f);
-            LevelUpProgression.lowerLevelLunarWeight = base.Config.Wrap<float>("CustomCommandPlugin lower level lunar weight", "Lower Level Lunar Weight", "Determines the weight of lunar drops at the lower level. Default 4.5.", 4.5f);
-            LevelUpProgression.lowerLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin lower level equipment weight", "Lower Level Equipment Weight", "Determines the weight of equipment drops at the lower level. Default 10.", 10f);
+            LevelUpProgression.lowerLevelTier1Weight = base.Config.Wrap<float>("Minimum Values", "Lower Level Tier 1 Weight", "Determines the weight of tier 1 drops at the lower level. Default 60.", 60f);
+            LevelUpProgression.lowerLevelTier2Weight = base.Config.Wrap<float>("Minimum Values", "Lower Level Tier 2 Weight", "Determines the weight of tier 2 drops at the lower level. Default 25.", 25f);
+            LevelUpProgression.lowerLevelTier3Weight = base.Config.Wrap<float>("Minimum Values", "Lower Level Tier 3 Weight", "Determines the weight of tier 3 drops at the lower level. Default 0.5.", 0.5f);
+            LevelUpProgression.lowerLevelLunarWeight = base.Config.Wrap<float>("Minimum Values", "Lower Level Lunar Weight", "Determines the weight of lunar drops at the lower level. Default 4.5.", 4.5f);
+            LevelUpProgression.lowerLevelEquipmentWeight = base.Config.Wrap<float>("Minimum Values", "Lower Level Equipment Weight", "Determines the weight of equipment drops at the lower level. Default 10.", 10f);
 
-            LevelUpProgression.upperLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 1 weight", "Upper Level Tier 1 Weight", "Determines the weight of tier 1 drops at the upper level. Default 30.", 30f);
-            LevelUpProgression.upperLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 2 weight", "Upper Level Tier 2 Weight", "Determines the weight of tier 2 drops at the upper level. Default 35.", 35f);
-            LevelUpProgression.upperLevelTier3Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 3 weight", "Upper Level Tier 3 Weight", "Determines the weight of tier 3 drops at the upper level. Default 25.", 25f);
-            LevelUpProgression.upperLevelLunarWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level lunar weight", "Upper Level Lunar Weight", "Determines the weight of lunar drops at the upper level. Default 5.", 5f);
-            LevelUpProgression.upperLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level equipment weight", "Upper Level Equipment Weight", "Determines the weight of equipment drops at the upper level. Default 5.", 5f);
+            LevelUpProgression.upperLevelTier1Weight = base.Config.Wrap<float>("Maximum Values", "Upper Level Tier 1 Weight", "Determines the weight of tier 1 drops at the upper level. Default 30.", 30f);
+            LevelUpProgression.upperLevelTier2Weight = base.Config.Wrap<float>("Maximum Values", "Upper Level Tier 2 Weight", "Determines the weight of tier 2 drops at the upper level. Default 35.", 35f);
+            LevelUpProgression.upperLevelTier3Weight = base.Config.Wrap<float>("Maximum Values", "Upper Level Tier 3 Weight", "Determines the weight of tier 3 drops at the upper level. Default 25.", 25f);
+            LevelUpProgression.upperLevelLunarWeight = base.Config.Wrap<float>("Maximum Values", "Upper Level Lunar Weight", "Determines the weight of lunar drops at the upper level. Default 5.", 5f);
+            LevelUpProgression.upperLevelEquipmentWeight = base.Config.Wrap<float>("Maximum Values", "Upper Level Equipment Weight", "Determines the weight of equipment drops at the upper level. Default 5.", 5f);
 
         }
 
@@ -378,7 +378,7 @@ namespace OhDangTheMods
                     {
 
                         //RoR2.Util.PlaySound("Item", currentPlayer.gameObject);
-                        RoR2.Chat.AddMessage(currentPlayer.GetBody().GetUserName() + " chose " + index.GetPickupNameToken() + ".");
+                        //RoR2.Chat.AddMessage(currentPlayer.GetBody().GetUserName() + " chose " + index + ".");
                         Logger.LogInfo("Item picked: " + index);
                         UnityEngine.Object.Destroy(g);
                         master.inventory.GiveItem(index.itemIndex);
@@ -409,7 +409,7 @@ namespace OhDangTheMods
                             RoR2.PickupDropletController.CreatePickupDroplet(RoR2.PickupCatalog.FindPickupIndex(master.inventory.currentEquipmentIndex), master.GetBody().transform.position, new Vector3(0, 0, 1));
 
                         Logger.LogInfo("Equipment picked: " + index);
-                        RoR2.Chat.AddMessage(currentPlayer.GetBody().GetUserName() + " chose " + def.nameToken + ".");
+                        //RoR2.Chat.AddMessage(currentPlayer.GetBody().GetUserName() + " chose " + def.nameToken + ".");
                         UnityEngine.Object.Destroy(g);
                         master.inventory.GiveEquipmentString(def.name);
                         showUI = false;
