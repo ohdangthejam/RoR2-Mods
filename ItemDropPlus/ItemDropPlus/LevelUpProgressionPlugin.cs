@@ -8,6 +8,7 @@ using On.RoR2;
 using RoR2;
 using RoR2.UI;
 using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -22,7 +23,6 @@ namespace OhDangTheMods
 
     [BepInPlugin(ModGuid, "LevelUpProgressionPlugin", "1.0.0")]
     [BepInDependency(MiniRpcPlugin.Dependency)]
-
     public class LevelUpProgressionPlugin : BaseUnityPlugin
     {
 
@@ -36,6 +36,8 @@ namespace OhDangTheMods
         private Button button1 = null;
         private Button button2 = null;
         private Button button3 = null;
+        private GameObject uiObject = null;
+        private List<RoR2.PickupIndex> saveList = new List<RoR2.PickupIndex>();
 
         public static ConfigWrapper<int> lowerLevel { get; set; }
         public static ConfigWrapper<int> upperLevel { get; set; }
@@ -55,20 +57,20 @@ namespace OhDangTheMods
         public void initConfig()
         {
 
-            LevelUpProgressionPlugin.lowerLevel = base.Config.Wrap<int>("CustomCommandPlugin lower level", "Lower Level", "Determines the level that rarity chances begin scaling. Default: 1.", 2);
+            LevelUpProgressionPlugin.lowerLevel = base.Config.Wrap<int>("CustomCommandPlugin lower level", "Lower Level", "Determines the level that rarity chances begin scaling. Default: 1.", 1);
             LevelUpProgressionPlugin.upperLevel = base.Config.Wrap<int>("CustomCommandPlugin upper level", "Upper Level", "Determines the level that rarity chances stop scaling. Default: 30.", 30);
 
-            LevelUpProgressionPlugin.lowerLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 1 weight", "Lower Level Tier 1 Weight", "Determines the weight of tier 1 drops at the lower level. Default 60.", 60);
-            LevelUpProgressionPlugin.lowerLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 2 weight", "Lower Level Tier 2 Weight", "Determines the weight of tier 2 drops at the lower level. Default 25.", 25);
+            LevelUpProgressionPlugin.lowerLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 1 weight", "Lower Level Tier 1 Weight", "Determines the weight of tier 1 drops at the lower level. Default 60.", 60f);
+            LevelUpProgressionPlugin.lowerLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 2 weight", "Lower Level Tier 2 Weight", "Determines the weight of tier 2 drops at the lower level. Default 25.", 25f);
             LevelUpProgressionPlugin.lowerLevelTier3Weight = base.Config.Wrap<float>("CustomCommandPlugin lower level tier 3 weight", "Lower Level Tier 3 Weight", "Determines the weight of tier 3 drops at the lower level. Default 0.5.", 0.5f);
             LevelUpProgressionPlugin.lowerLevelLunarWeight = base.Config.Wrap<float>("CustomCommandPlugin lower level lunar weight", "Lower Level Lunar Weight", "Determines the weight of lunar drops at the lower level. Default 4.5.", 4.5f);
-            LevelUpProgressionPlugin.lowerLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin lower level equipment weight", "Lower Level Equipment Weight", "Determines the weight of equipment drops at the lower level. Default 10.", 10);
+            LevelUpProgressionPlugin.lowerLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin lower level equipment weight", "Lower Level Equipment Weight", "Determines the weight of equipment drops at the lower level. Default 10.", 10f);
 
-            LevelUpProgressionPlugin.upperLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 1 weight", "Upper Level Tier 1 Weight", "Determines the weight of tier 1 drops at the upper level. Default 30.", 30);
-            LevelUpProgressionPlugin.upperLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 2 weight", "Upper Level Tier 2 Weight", "Determines the weight of tier 2 drops at the upper level. Default 35.", 35);
-            LevelUpProgressionPlugin.upperLevelTier3Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 3 weight", "Upper Level Tier 3 Weight", "Determines the weight of tier 3 drops at the upper level. Default 25.", 25);
-            LevelUpProgressionPlugin.upperLevelLunarWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level lunar weight", "Upper Level Lunar Weight", "Determines the weight of lunar drops at the upper level. Default 5.", 5);
-            LevelUpProgressionPlugin.upperLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level equipment weight", "Upper Level Equipment Weight", "Determines the weight of equipment drops at the upper level. Default 5.", 5);
+            LevelUpProgressionPlugin.upperLevelTier1Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 1 weight", "Upper Level Tier 1 Weight", "Determines the weight of tier 1 drops at the upper level. Default 30.", 30f);
+            LevelUpProgressionPlugin.upperLevelTier2Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 2 weight", "Upper Level Tier 2 Weight", "Determines the weight of tier 2 drops at the upper level. Default 35.", 35f);
+            LevelUpProgressionPlugin.upperLevelTier3Weight = base.Config.Wrap<float>("CustomCommandPlugin upper level tier 3 weight", "Upper Level Tier 3 Weight", "Determines the weight of tier 3 drops at the upper level. Default 25.", 25f);
+            LevelUpProgressionPlugin.upperLevelLunarWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level lunar weight", "Upper Level Lunar Weight", "Determines the weight of lunar drops at the upper level. Default 5.", 5f);
+            LevelUpProgressionPlugin.upperLevelEquipmentWeight = base.Config.Wrap<float>("CustomCommandPlugin upper level equipment weight", "Upper Level Equipment Weight", "Determines the weight of equipment drops at the upper level. Default 5.", 5f);
 
         }
 
@@ -84,7 +86,7 @@ namespace OhDangTheMods
         {
 
             if (Input.GetKeyDown(KeyCode.Alpha9))
-                RoR2.PlayerCharacterMasterController.instances[0].master.GiveExperience(30000);
+                RoR2.PlayerCharacterMasterController.instances[0].master.GiveExperience(300000);
             if (Input.GetKeyDown(KeyCode.Alpha1) && button1 != null)
                 button1.onClick.Invoke();
             if (Input.GetKeyDown(KeyCode.Alpha2) && button2 != null)
@@ -95,25 +97,21 @@ namespace OhDangTheMods
 
         public void Awake()
         {
+
+            On.RoR2.TeleporterInteraction.OnInteractionBegin += delegate (On.RoR2.TeleporterInteraction.orig_OnInteractionBegin orig, RoR2.TeleporterInteraction self, RoR2.Interactor interactor)
+            {
+
+                orig.Invoke(self, interactor);
+
+            };
+
+            //On Start
             On.RoR2.Run.Start += delegate (On.RoR2.Run.orig_Start orig, RoR2.Run self)
             {
                 orig.Invoke(self);
                 levelsSpent = 0;
                 this.levelsTotal = 0;
                 this.startMessage = true;
-            };
-
-            On.RoR2.TeleportOutController.AddTPOutEffect += delegate (On.RoR2.TeleportOutController.orig_AddTPOutEffect orig, RoR2.CharacterModel characterModel, float beginAlpha, float endAlpha, float duration)
-            {
-                if (characterModel.body.master.isLocalPlayer)
-                {
-                    orig.Invoke(characterModel, beginAlpha, endAlpha, duration);
-
-                    var levelUpUI = GameObject.Find("LevelUpProgressionUI");
-                    if (levelUpUI != null)
-                        UnityEngine.Object.Destroy(levelUpUI);
-
-                }
             };
 
             //On Spawn
@@ -130,8 +128,10 @@ namespace OhDangTheMods
                 if ((levelsTotal > 0 && levelsSpent < levelsTotal) || levelsTotal <= 0)
                 {
 
-                    if (showUI == false)
+                    if (showUI == false && startMessage == true)
                         StartCoroutine(ShowItemPickerCoroutine(3));
+                    if (showUI == false && startMessage == false)
+                        StartCoroutine(ShowItemPickerCoroutine(0.8f));
 
                 }
 
@@ -176,13 +176,21 @@ namespace OhDangTheMods
 
         }
 
+        IEnumerator DestroyUICoroutine(float waitForSeconds, GameObject g)
+        {
+
+            if (waitForSeconds > 0)
+                yield return new WaitForSeconds(waitForSeconds);
+
+            UnityEngine.Object.Destroy(g);
+
+        }
+
         public RoR2.CharacterMaster GetCurrentPlayer()
         {
 
             if (this.currentPlayer == null)
-            {
                 this.currentPlayer = RoR2.PlayerCharacterMasterController.instances[0].master;
-            }
             return this.currentPlayer;
 
         }
@@ -190,74 +198,54 @@ namespace OhDangTheMods
         private List<RoR2.PickupIndex> GetAvailablePickups()
         {
 
-            float difference = upperLevel.Value - lowerLevel.Value;
-
-            float coefficient = (levelsSpent - lowerLevel.Value) / upperLevel.Value;
-            if (coefficient < 0) coefficient = 0;
-
-            float scaler = (difference * coefficient);
+            float difference = (float)upperLevel.Value - (float)lowerLevel.Value;
+            float chanceScaling = ((float)levelsSpent - (float)lowerLevel.Value) / (float)upperLevel.Value;
+            if (levelsSpent <= lowerLevel.Value) chanceScaling = 0;
+            if (chanceScaling > 1) chanceScaling = 1;
 
             float totalMinimum = lowerLevelTier1Weight.Value + lowerLevelTier2Weight.Value + lowerLevelTier3Weight.Value + lowerLevelLunarWeight.Value + lowerLevelEquipmentWeight.Value;
             float totalMaximum = upperLevelTier1Weight.Value + upperLevelTier2Weight.Value + upperLevelTier3Weight.Value + upperLevelLunarWeight.Value + upperLevelEquipmentWeight.Value;
-            float totalDifference = totalMaximum - totalMinimum;
-            float currentTotal = (scaler * totalDifference) + totalMinimum;
+            float totalDifference = (float)totalMaximum - (float)totalMinimum;
+            float currentTotal = totalMinimum + (chanceScaling * totalDifference);
 
-            List<RoR2.PickupIndex> RollPickupList()
+            List <RoR2.PickupIndex> RollPickupList()
             {
-                //RoR2.Chat.AddMessage("Min Level: " + lowerLevel.Value + " Max Level: " + upperLevel.Value + " Dif: " + difference + " Coef: " +
-                //    coefficient + " Scaler: " + scaler + " Total Minimum: " + totalMinimum + " Total Maximum: " + totalMaximum + " Total Difference: "
-                //    + totalDifference + " Current Total: " + currentTotal);
+
                 float roll = UnityEngine.Random.Range(0, currentTotal);
                 List<RoR2.PickupIndex> dropList = new List<RoR2.PickupIndex>();
-
-                float checkLevel = lowerLevelTier1Weight.Value * (scaler + 1);
+                float checkLevel = 0;
+                checkLevel += lowerLevelTier1Weight.Value + (chanceScaling * (upperLevelTier1Weight.Value - lowerLevelTier1Weight.Value));
                 if (roll <= checkLevel)
                 {
-
-                    //RoR2.Chat.AddMessage("Tier 1: " + checkLevel);
-                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier1DropList);
                     return dropList;
                 }
-                checkLevel += lowerLevelTier2Weight.Value * (scaler + 1);
+                checkLevel += lowerLevelTier2Weight.Value + (chanceScaling * (upperLevelTier2Weight.Value - lowerLevelTier2Weight.Value));
                 if (roll <= checkLevel)
                 {
-                    //RoR2.Chat.AddMessage("Tier 2: " + checkLevel);
-                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier2DropList);
                     return dropList;
                 }
-                checkLevel += lowerLevelTier3Weight.Value * (scaler + 1);
+                checkLevel += lowerLevelTier3Weight.Value + (chanceScaling * (upperLevelTier3Weight.Value - lowerLevelTier3Weight.Value));
                 if (roll <= checkLevel)
                 {
-                    //RoR2.Chat.AddMessage("Tier 3: " + checkLevel);
-                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableTier3DropList);
                     return dropList;
                 }
-                checkLevel += lowerLevelLunarWeight.Value * (scaler + 1);
+                checkLevel += lowerLevelLunarWeight.Value + (chanceScaling * (upperLevelLunarWeight.Value - lowerLevelLunarWeight.Value));
                 if (roll <= checkLevel)
                 {
-                    //RoR2.Chat.AddMessage("Tier Lunar: " + checkLevel);
-                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableLunarDropList);
                     return dropList;
                 }
-                checkLevel += lowerLevelEquipmentWeight.Value * (scaler + 1);
+                checkLevel += lowerLevelEquipmentWeight.Value + (chanceScaling * (upperLevelEquipmentWeight.Value - lowerLevelEquipmentWeight.Value));
                 if (roll <= checkLevel)
                 {
-                    //RoR2.Chat.AddMessage("Tier Equipment: " + checkLevel);
-                    RoR2.Chat.AddMessage("Roll: " + roll);
                     dropList.AddRange(RoR2.Run.instance.availableEquipmentDropList);
                     return dropList;
                 }
                 else
-                {
-                    RoR2.Chat.AddMessage("Defaulted.");
-                    //RoR2.Chat.AddMessage("Check Level: " + checkLevel);
-                    RoR2.Chat.AddMessage("Roll: " + roll);
                     return dropList;
-                }
 
             }
 
@@ -305,8 +293,8 @@ namespace OhDangTheMods
             g.layer = 5; // UI
             g.AddComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
             g.GetComponent<Canvas>().sortingOrder = -1; // Required or the UI will render over pause and tooltips.
-            // g.AddComponent<CanvasScaler>().scaleFactor = 10.0f;
-            // g.GetComponent<CanvasScaler>().dynamicPixelsPerUnit = 10f;
+            // g.AddComponent<CanvaschanceScaling>().scaleFactor = 10.0f;
+            // g.GetComponent<CanvaschanceScaling>().dynamicPixelsPerUnit = 10f;
             g.AddComponent<GraphicRaycaster>();
             g.AddComponent<MPEventSystemProvider>().fallBackToMainEventSystem = true;
             g.AddComponent<MPEventSystemLocator>();
@@ -374,7 +362,7 @@ namespace OhDangTheMods
             itemCtr.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 0);
             itemCtr.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var itemIconPrefab = itemInventoryDisplay.GetComponent<ItemInventoryDisplay>().itemIconPrefab;//ERROR HERE SOMEWHERE
+            var itemIconPrefab = itemInventoryDisplay.GetComponent<ItemInventoryDisplay>().itemIconPrefab;
 
             foreach (RoR2.PickupIndex index in availablePickups)
             {
@@ -388,11 +376,12 @@ namespace OhDangTheMods
 
                     item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                     {
-                        RoR2.Chat.AddMessage(currentPlayer.playerControllerId + " chose " + index.GetPickupNameToken() + ".");
+
+                        //RoR2.Util.PlaySound("Item", currentPlayer.gameObject);
+                        RoR2.Chat.AddMessage(currentPlayer.GetBody().GetUserName() + " chose " + index.GetPickupNameToken() + ".");
                         Logger.LogInfo("Item picked: " + index);
                         UnityEngine.Object.Destroy(g);
                         master.inventory.GiveItem(index.itemIndex);
-
                         showUI = false;
                         button1 = null;
                         button2 = null;
@@ -415,8 +404,12 @@ namespace OhDangTheMods
                     var temp = index.value;
                     item.gameObject.AddComponent<Button>().onClick.AddListener(() =>
                     {
+
+                        if (master.inventory.GetEquipmentIndex() != null)
+                            RoR2.PickupDropletController.CreatePickupDroplet(RoR2.PickupCatalog.FindPickupIndex(master.inventory.currentEquipmentIndex), master.GetBody().transform.position, new Vector3(0, 0, 1));
+
                         Logger.LogInfo("Equipment picked: " + index);
-                        RoR2.Chat.AddMessage(currentPlayer.playerControllerId + " chose " + index.GetPickupNameToken() + ".");
+                        RoR2.Chat.AddMessage(currentPlayer.GetBody().GetUserName() + " chose " + def.nameToken + ".");
                         UnityEngine.Object.Destroy(g);
                         master.inventory.GiveEquipmentString(def.name);
                         showUI = false;
@@ -446,7 +439,24 @@ namespace OhDangTheMods
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(itemCtr.GetComponent<RectTransform>());
             ctr.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, itemCtr.GetComponent<RectTransform>().sizeDelta.y + 45f);
-        }
 
+            //////////////////////////////////////////////////////////////////////////////////////////////
+            ///Teleport out code
+            //////////////////////////////////////////////////////////////////////////////////////////////
+
+            
+            /* Also activates on teleport in...
+            On.RoR2.TeleportOutController.AddTPOutEffect += delegate (On.RoR2.TeleportOutController.orig_AddTPOutEffect orig, RoR2.CharacterModel characterModel, float beginAlpha, float endAlpha, float duration)
+            {
+
+                orig.Invoke(characterModel, beginAlpha, endAlpha, duration);
+
+                StartCoroutine(DestroyUICoroutine(2, g));
+
+                }
+            };
+            */
+
+        }
     }
 }
